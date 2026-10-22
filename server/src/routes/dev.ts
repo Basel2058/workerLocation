@@ -262,6 +262,12 @@ export default async function devRoutes(app: FastifyInstance) {
     return { ok: true };
   });
 
+  /** The address this browser reaches the server from — handy when adding a workplace's internet address. */
+  app.get('/api/dev/my-ip', async (req) => {
+    dev(req);
+    return { ip: req.ip.replace(/^::ffff:/, '') };
+  });
+
   app.get('/api/dev/geocode', async (req) => {
     dev(req);
     const { q } = z.object({ q: z.string().trim().min(3).max(200) }).parse(req.query);

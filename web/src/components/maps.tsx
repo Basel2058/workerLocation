@@ -1,6 +1,6 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useRef, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { LiveRow, Site } from '../../../shared/types';
 import { usePublicConfig } from '../lib/auth';
 import { initials } from '../lib/format';
@@ -45,6 +45,9 @@ function useLeaflet(container: RefObject<HTMLDivElement | null>, options: L.MapO
   const config = usePublicConfig();
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
+  // Changes whenever the container gets a real size. Maps inside dialogs start at 0×0, and fitting the
+  // view before layout would leave them zoomed out to the whole world.
+  const [size, setSize] = useState('0x0');
   useEffect(() => {
     const el = container.current;
     if (!el || !config || mapRef.current) return;
@@ -53,7 +56,10 @@ function useLeaflet(container: RefObject<HTMLDivElement | null>, options: L.MapO
     map.setView([20, 0], 2);
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
-    const ro = new ResizeObserver(() => map.invalidateSize());
+    const ro = new ResizeObserver(() => {
+      map.invalidateSize();
+      setSize(`${el.clientWidth}x${el.clientHeight}`);
+    });
     ro.observe(el);
     return () => {
       ro.disconnect();
@@ -63,7 +69,8 @@ function useLeaflet(container: RefObject<HTMLDivElement | null>, options: L.MapO
     };
     // Map options are fixed for the lifetime of a map, so only the config triggers a rebuild.
   }, [config]);
-  return { mapRef, layerRef, ready: !!config };
+  const hasSize = size !== '0x0' && !size.startsWith('0x') && !size.endsWith('x0');
+  return { mapRef, layerRef, ready: !!config && hasSize, size };
 }
 
 /** The manager's live map: workplaces and where each checked-in worker is. */
@@ -87,7 +94,7 @@ export function LiveMap({
   useEffect(() => {
     const map = mapRef.current;
     const layer = layerRef.current;
-    if (!map || !layer) return;
+    if (!map || !layer || !ready) return;
     layer.clearLayers();
     for (const s of sites) {
       L.circle([s.lat, s.lng], { ...SITE_STYLE, radius: s.radiusM }).addTo(layer);
@@ -136,7 +143,7 @@ export function MiniMap({
   useEffect(() => {
     const map = mapRef.current;
     const layer = layerRef.current;
-    if (!map || !layer) return;
+    if (!map || !layer || !ready) return;
     layer.clearLayers();
     const bounds: L.LatLngTuple[] = [];
     if (site) {
@@ -174,11 +181,12 @@ export function SitePicker({
   const { mapRef, layerRef, ready } = useLeaflet(el, { scrollWheelZoom: true });
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
-  const centered = useRef(false);
+  /** What the view was last fitted to: 'pin', 'others' or nothing yet. */
+  const fittedTo = useRef<'pin' | 'others' | null>(null);
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
+    if (!map || !ready) return;
     const handler = (e: L.LeafletMouseEvent) => onChangeRef.current({ lat: e.latlng.lat, lng: e.latlng.lng });
     map.on('click', handler);
     return () => void map.off('click', handler);
@@ -187,7 +195,7 @@ export function SitePicker({
   useEffect(() => {
     const map = mapRef.current;
     const layer = layerRef.current;
-    if (!map || !layer) return;
+    if (!map || !layer || !ready) return;
     layer.clearLayers();
     for (const s of others) {
       L.circle([s.lat, s.lng], { color: '#94a3b8', weight: 1, fillOpacity: 0.05, radius: s.radiusM, interactive: false }).addTo(layer);
@@ -204,22 +212,16 @@ export function SitePicker({
         onChangeRef.current({ lat: p.lat, lng: p.lng });
       });
       pin.addTo(layer);
-      if (!centered.current) {
-        centered.current = true;
-        map.setView([value.lat, value.lng], 16);
+      // Center on the pin the first time, and whenever it moves out of view (address search, "I'm here").
+      if (fittedTo.current !== 'pin' || !map.getBounds().pad(-0.1).contains([value.lat, value.lng])) {
+        map.setView([value.lat, value.lng], fittedTo.current === 'pin' ? Math.max(map.getZoom(), 15) : 16);
+        fittedTo.current = 'pin';
       }
-    } else if (!centered.current && others.length) {
-      centered.current = true;
+    } else if (fittedTo.current === null && others.length) {
       map.fitBounds(L.latLngBounds(others.map((s) => [s.lat, s.lng] as L.LatLngTuple)).pad(0.5), { maxZoom: 15 });
+      fittedTo.current = 'others';
     }
   }, [value, others, ready, mapRef, layerRef]);
-
-  /** Re-centers on the pin (after an address search or "use my location"). */
-  useEffect(() => {
-    if (!value || !mapRef.current) return;
-    const map = mapRef.current;
-    if (!map.getBounds().pad(-0.1).contains([value.lat, value.lng])) map.setView([value.lat, value.lng], Math.max(map.getZoom(), 15));
-  }, [value, mapRef]);
 
   return <div ref={el} className={cx('isolate overflow-hidden rounded-xl ring-1 ring-line', className)} />;
 }
