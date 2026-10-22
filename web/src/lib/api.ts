@@ -91,3 +91,29 @@ export function qs(params: Record<string, string | number | boolean | null | und
   const s = sp.toString();
   return s ? `?${s}` : '';
 }
+
+/** Downloads a file from the API (works with the developer's company header, unlike a plain link). */
+export async function downloadFile(path: string, opts: RequestOptions = {}): Promise<void> {
+  const headers: Record<string, string> = { ...opts.headers };
+  if (opts.companyId) headers['x-company-id'] = String(opts.companyId);
+  const res = await fetch(path, { headers, credentials: 'same-origin' });
+  if (!res.ok) {
+    let message = 'Download failed.';
+    try {
+      message = ((await res.json()) as ApiErrorBody).error.message;
+    } catch {
+      // Not JSON.
+    }
+    throw new ApiError(res.status, 'DOWNLOAD_FAILED', message);
+  }
+  const disposition = res.headers.get('content-disposition') ?? '';
+  const name = /filename="([^"]+)"/.exec(disposition)?.[1] ?? 'download';
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

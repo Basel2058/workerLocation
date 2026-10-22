@@ -54,8 +54,11 @@ export function Dialog({
       )}
     >
       {open && (
-        <div className="animate-sheet-up flex max-h-[94dvh] flex-col overflow-hidden rounded-t-3xl bg-surface shadow-pop ring-1 ring-line sm:rounded-2xl">
+        <div className="animate-sheet-up relative flex max-h-[94dvh] flex-col overflow-hidden rounded-t-3xl bg-surface shadow-pop ring-1 ring-line sm:rounded-2xl">
           <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line-strong sm:hidden" aria-hidden />
+          {!title && !description && (
+            <IconButton icon={X} label="Close" size="sm" onClick={onClose} className="absolute top-3 right-3 z-10" />
+          )}
           {(title || description) && (
             <div className="flex shrink-0 items-start justify-between gap-3 px-5 pt-3 pb-2 sm:pt-5">
               <div className="min-w-0">

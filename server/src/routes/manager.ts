@@ -21,6 +21,7 @@ import { listSites, toCompany, toSite } from '../services/companies';
 import { decideDevice, getCompanyDevice, listUserDevices, revokeDevice } from '../services/devices';
 import {
   createManualEntry,
+  getEntry,
   getPunchSummary,
   listEntries,
   restoreEntry,
@@ -248,6 +249,11 @@ export default async function managerRoutes(app: FastifyInstance) {
       .object({ workerId: z.coerce.number().int().positive().optional(), includeVoid: z.enum(['0', '1']).optional() })
       .parse(req.query);
     return listEntries(db, company, { start: range.start, end: range.end, workerId: q.workerId, includeVoid: q.includeVoid === '1' });
+  });
+
+  app.get('/api/m/entries/:id', async (req): Promise<TimeEntry> => {
+    const { company } = companyScope(req);
+    return getEntry(db, company, idParam((req.params as { id: string }).id));
   });
 
   app.post('/api/m/entries', async (req): Promise<TimeEntry> => {

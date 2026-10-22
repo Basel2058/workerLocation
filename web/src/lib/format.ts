@@ -17,6 +17,16 @@ export function fmtTime(iso: string | null | undefined, tz: string): string {
   return dtf(tz, { hour: 'numeric', minute: '2-digit' }).format(new Date(iso));
 }
 
+/** Compact time for dense views: "7a", "3:30p" (12-hour locales) or "07:00" (24-hour locales). */
+export function fmtTimeCompact(iso: string, tz: string): string {
+  const parts = dtf(tz, { hour: 'numeric', minute: '2-digit' }).formatToParts(new Date(iso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const period = get('dayPeriod');
+  if (!period) return `${get('hour')}:${get('minute')}`;
+  const minute = get('minute');
+  return `${get('hour')}${minute === '00' ? '' : `:${minute}`}${period.trim()[0]!.toLowerCase()}`;
+}
+
 export function fmtDateTime(iso: string | null | undefined, tz: string): string {
   if (!iso) return '—';
   return dtf(tz, { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(iso));

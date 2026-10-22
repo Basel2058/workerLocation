@@ -12,10 +12,14 @@ import {
   type TextareaHTMLAttributes,
 } from 'react';
 import { Link, type LinkProps } from 'react-router';
+import { extendTailwindMerge } from 'tailwind-merge';
 import { initials } from '../lib/format';
 
-export function cx(...parts: Array<string | false | null | undefined>): string {
-  return parts.filter(Boolean).join(' ');
+const twMerge = extendTailwindMerge({ extend: { theme: { shadow: ['card', 'pop'] } } });
+
+/** Joins class names; later utilities override conflicting earlier ones (e.g. a caller's `w-auto` beats `w-full`). */
+export function cx(...parts: Array<string | false | null | undefined | 0>): string {
+  return twMerge(parts.filter(Boolean).join(' '));
 }
 
 type IconType = ComponentType<{ className?: string; strokeWidth?: number; 'aria-hidden'?: boolean }>;
@@ -561,7 +565,7 @@ export function Stat({
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cx(
-        'rounded-2xl bg-surface p-4 text-left ring-1 shadow-card transition-all',
+        'w-full rounded-2xl bg-surface p-4 text-left ring-1 shadow-card transition-all',
         active ? 'ring-2 ring-brand' : 'ring-line',
         onClick && 'hover:ring-line-strong active:scale-[0.99]',
       )}
