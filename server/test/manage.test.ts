@@ -102,6 +102,21 @@ describe('live board', () => {
     expect(live.body.rows[0].status).toBe(late.date === live.body.date ? 'late' : 'on_site');
     expect(live.body.sites.map((x: { name: string }) => x.name)).toEqual(['Main Yard', 'North Depot']);
   });
+
+  it('shows a worker who arrives long before the shift once, as on site', async () => {
+    const start = localAt(90);
+    const end = localAt(8 * 60);
+    await m.post('/api/m/shifts', { workerIds: [s.workers[1]!.id], siteId: s.siteId, dates: [start.date], start: start.time, end: end.time });
+    const early = await workerWithPhone(app, s.workers[1]!);
+    await punch(early.client, early.phone, 'in', { lat: SITE.lat + 0.0003, lng: SITE.lng });
+
+    const live = await m.get('/api/m/live');
+    const rows = live.body.rows.filter((r: { worker: { id: number } }) => r.worker.id === s.workers[1]!.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].status).toBe('on_site');
+    if (start.date === live.body.date) expect(rows[0].shift).not.toBeNull();
+    expect(live.body.counts.upcoming).toBe(0);
+  });
 });
 
 describe('timesheets', () => {

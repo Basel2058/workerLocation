@@ -1,4 +1,4 @@
-import type { Shift } from '../../../shared/types';
+import type { Shift, TimeEntry } from '../../../shared/types';
 import type { DB } from '../db';
 import type { CompanyRow, ShiftRow, UserRow } from '../db/rows';
 import { badRequest, conflict, notFound } from '../lib/errors';
@@ -74,6 +74,20 @@ export function findShiftForCheckIn(db: DB, workerId: number, now: string, early
   if (rows.length === 0) return null;
   const t = Date.parse(now);
   return rows.reduce((a, b) => (Math.abs(Date.parse(b.starts_at) - t) < Math.abs(Date.parse(a.starts_at) - t) ? b : a));
+}
+
+/**
+ * The shift an entry recorded without one belongs to: a shift of the same worker it overlaps
+ * (counting the early window), or, while the worker is still on site, their next shift that
+ * has not ended yet, so someone who arrives very early is shown once, as on site for it.
+ */
+export function shiftForEntry<T extends ShiftRow>(shifts: T[], e: TimeEntry, earlyMin: number, now: string): T | undefined {
+  return shifts.find(
+    (s) =>
+      s.worker_id === e.workerId &&
+      e.clockInAt < s.ends_at &&
+      (e.status === 'open' || (e.clockOutAt ?? now) > addMinutes(s.starts_at, -earlyMin)),
+  );
 }
 
 /** Converts local date + times to a UTC range; an end at or before the start means the shift ends the next day. */

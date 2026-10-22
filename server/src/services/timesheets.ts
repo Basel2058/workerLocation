@@ -2,25 +2,16 @@ import type { TimeEntry, TimesheetResponse, TimesheetRow } from '../../../shared
 import { flagInfo } from '../../../shared/types';
 import type { DB } from '../db';
 import type { CompanyRow } from '../db/rows';
-import { addMinutes, dateSpanRange, formatLocal, localDate, minutesBetween, nowIso } from '../lib/time';
+import { dateSpanRange, formatLocal, localDate, minutesBetween, nowIso } from '../lib/time';
 import { companySettings } from './companies';
 import { listEntries } from './entries';
-import { listShifts, type ShiftListRow } from './shifts';
+import { listShifts, shiftForEntry, type ShiftListRow } from './shifts';
 
 /** Links entries to shifts by id, or by overlapping time for entries recorded without a shift. */
 function entriesPerShift(shifts: ShiftListRow[], entries: TimeEntry[], earlyMin: number, now: string) {
   const map = new Map<number, TimeEntry[]>();
   for (const e of entries) {
-    let shiftId = e.shiftId;
-    if (!shiftId) {
-      shiftId =
-        shifts.find(
-          (s) =>
-            s.worker_id === e.workerId &&
-            e.clockInAt < s.ends_at &&
-            (e.clockOutAt ?? now) > addMinutes(s.starts_at, -earlyMin),
-        )?.id ?? null;
-    }
+    const shiftId = e.shiftId ?? shiftForEntry(shifts, e, earlyMin, now)?.id ?? null;
     if (shiftId) map.set(shiftId, [...(map.get(shiftId) ?? []), e]);
   }
   for (const list of map.values()) list.sort((a, b) => a.clockInAt.localeCompare(b.clockInAt));

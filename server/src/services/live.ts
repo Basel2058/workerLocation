@@ -5,7 +5,7 @@ import { addMinutes, dayRange, minutesBetween, nowIso, todayLocal } from '../lib
 import { companySettings, listSites, toSite } from './companies';
 import { closeStaleEntries, ENTRY_SELECT, toTimeEntries, type EntryListRow } from './entries';
 import { latestPresenceByWorker, type PresenceWithPosition } from './presence';
-import { listShifts } from './shifts';
+import { listShifts, shiftForEntry } from './shifts';
 
 const STATUS_ORDER: Record<LiveStatus, number> = {
   late: 0,
@@ -50,20 +50,12 @@ export function getLive(db: DB, company: CompanyRow, opts: { siteId?: number; no
   );
   const presence = latestPresenceByWorker(db, company.id, day.start);
 
-  // Attach entries to shifts: linked ones directly, unlinked ones when they overlap the shift.
+  // Attach entries to shifts: linked ones directly, unlinked ones by time (see shiftForEntry).
   const byShift = new Map<number, TimeEntry[]>();
   const loose: TimeEntry[] = [];
   for (const e of entries) {
     let shiftId = e.shiftId && shifts.some((s) => s.id === e.shiftId) ? e.shiftId : null;
-    if (!shiftId && !e.shiftId) {
-      const match = shifts.find(
-        (s) =>
-          s.worker_id === e.workerId &&
-          e.clockInAt < s.ends_at &&
-          (e.clockOutAt ?? now) > addMinutes(s.starts_at, -settings.earlyCheckInMin),
-      );
-      shiftId = match?.id ?? null;
-    }
+    if (!shiftId && !e.shiftId) shiftId = shiftForEntry(shifts, e, settings.earlyCheckInMin, now)?.id ?? null;
     if (shiftId) byShift.set(shiftId, [...(byShift.get(shiftId) ?? []), e]);
     else if (!e.shiftId) loose.push(e);
   }
