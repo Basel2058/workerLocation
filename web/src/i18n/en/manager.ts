@@ -148,7 +148,8 @@ export const manager = {
       checkOutAt: 'Check-out {time}',
       distanceFrom: '{distance} from {site}',
       atSite: 'At {site}',
-      gpsAccuracy: 'GPS ±{distance}',
+      /** {accuracy} is person.accuracy, e.g. "±11 m". */
+      gpsAccuracy: 'GPS {accuracy}',
       workplaceInternet: 'On workplace internet',
       accept: 'Accept',
       accepted: 'Accepted',
@@ -225,6 +226,8 @@ export const manager = {
     note: 'Note for the worker',
     notePlaceholder: 'For example: bring safety boots',
     timeZone: 'Times are in the workplace time zone ({tz}).',
+    /** Shift times in the narrow week grid, e.g. "7a–3:30p" or "07:00–15:30" (no spaces, so they fit). */
+    chipRange: '{from}–{to}',
   },
   hours: {
     title: 'Hours',

@@ -150,7 +150,7 @@ export const manager: Translation<typeof en> = {
       checkOutAt: 'تسجيل انصراف {time}',
       distanceFrom: 'على بعد {distance} من {site}',
       atSite: 'في {site}',
-      gpsAccuracy: 'دقة GPS ±{distance}',
+      gpsAccuracy: 'دقة GPS {accuracy}',
       workplaceInternet: 'متصل بإنترنت موقع العمل',
       accept: 'قبول',
       accepted: 'تم القبول',
@@ -259,6 +259,7 @@ export const manager: Translation<typeof en> = {
     note: 'ملاحظة للعامل',
     notePlaceholder: 'مثلًا: إحضار حذاء السلامة',
     timeZone: 'الأوقات حسب المنطقة الزمنية لموقع العمل ({tz}).',
+    chipRange: '{from}–{to}',
   },
   hours: {
     title: 'كشف الساعات',
@@ -295,7 +296,7 @@ export const manager: Translation<typeof en> = {
     }),
     lateCount: p({
       zero: 'بلا تأخير',
-      one: 'حالة تأخير واحدة',
+      one: 'تأخير واحد',
       two: 'حالتا تأخير',
       few: '{count} حالات تأخير',
       many: '{count} حالة تأخير',
@@ -303,7 +304,7 @@ export const manager: Translation<typeof en> = {
     }),
     absentCount: p({
       zero: 'بلا غياب',
-      one: 'حالة غياب واحدة',
+      one: 'غياب واحد',
       two: 'حالتا غياب',
       few: '{count} حالات غياب',
       many: '{count} حالة غياب',

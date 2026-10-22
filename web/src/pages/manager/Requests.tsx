@@ -8,7 +8,7 @@ import { useToast } from '../../components/Toast';
 import { Avatar, Badge, Button, ButtonAnchor, Card, EmptyState, ErrorBox, Notice, PageHeader, PageLoader } from '../../components/ui';
 import { fmtDateTime, fmtDistance, fmtRelative, fmtTime, telHref, toLocalInput } from '../../lib/format';
 import { flagInfo } from '../../lib/flags';
-import { t } from '../../lib/i18n';
+import { t, tRich } from '../../lib/i18n';
 import { useManager } from './context';
 import { EntryEditor, type EntryEditorTarget } from './EntryEditor';
 
@@ -145,7 +145,14 @@ export function RequestsPage() {
                             : t('manager.requests.punches.atSite', { site: p.siteName })}
                         </Badge>
                       )}
-                      {p.accuracy !== null && <Badge tone="gray">{t('manager.requests.punches.gpsAccuracy', { distance: fmtDistance(p.accuracy) })}</Badge>}
+                      {p.accuracy !== null && (
+                        <Badge tone="gray">
+                          {/* Isolated so "±11 m" stays together after the Latin "GPS" in right-to-left languages. */}
+                          {tRich('manager.requests.punches.gpsAccuracy', {
+                            accuracy: <bdi>{t('manager.person.accuracy', { distance: fmtDistance(p.accuracy) })}</bdi>,
+                          })}
+                        </Badge>
+                      )}
                       {p.networkMatch && <Badge tone="green">{t('manager.requests.punches.workplaceInternet')}</Badge>}
                     </div>
                     {p.flags.filter((f) => f !== 'OFF_SITE_REQUEST').length > 0 && (

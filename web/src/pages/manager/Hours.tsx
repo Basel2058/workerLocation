@@ -249,7 +249,8 @@ function WorkerEntries({
                           from: fmtTime(e.clockInAt, m.tz),
                           to: e.clockOutAt ? fmtTime(e.clockOutAt, m.tz) : e.status === 'open' ? t('common.now') : t('common.empty'),
                         })}
-                        <span className="ms-2 font-normal text-muted">{e.minutes !== null ? fmtDuration(e.minutes) : ''}</span>
+                        {/* <bdi>: in right-to-left languages "15:42" and "8h" would otherwise run together as one number. */}
+                        <bdi className="ms-2 font-normal text-muted">{e.minutes !== null ? fmtDuration(e.minutes) : ''}</bdi>
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-1">
                         {e.siteName && <span className="me-1 text-xs text-muted">{e.siteName}</span>}

@@ -192,7 +192,7 @@ function ShiftChip({ shift, tz, color, onClick }: { shift: Shift; tz: string; co
       <span className="flex items-center gap-1.5">
         <span className={cx('size-2 shrink-0 rounded-full', color)} />
         <span className="tabular truncate text-[13px] font-medium">
-          {t('common.range', { from: fmtTimeCompact(shift.startsAt, tz), to: fmtTimeCompact(shift.endsAt, tz) })}
+          {t('manager.schedule.chipRange', { from: fmtTimeCompact(shift.startsAt, tz), to: fmtTimeCompact(shift.endsAt, tz) })}
         </span>
       </span>
       <span className="mt-0.5 block truncate text-[11px] text-muted">{shift.siteName}</span>
