@@ -323,7 +323,12 @@ export function PeopleTable({ people, emptyText }: { people: UserRecord[]; empty
             </span>
             <span className="block truncate text-[13px] text-muted">
               <Ltr>@{u.username}</Ltr>
-              {u.companyName ? ` · ${u.companyName}` : ''}
+              {u.companyName && (
+                <>
+                  {' · '}
+                  <bdi>{u.companyName}</bdi>
+                </>
+              )}
               {u.phone && (
                 <>
                   {' · '}
@@ -495,7 +500,7 @@ export function PersonDetailPage() {
         description={
           <span className="flex flex-wrap items-center gap-2">
             <Badge tone={ROLE_TONE[user.role]}>{roleLabel(user.role)}</Badge>
-            {user.companyName && <span>{user.companyName}</span>}
+            {user.companyName && <bdi>{user.companyName}</bdi>}
             {!user.active && <Badge tone="gray">{t('dev.people.turnedOff')}</Badge>}
             {user.locked && <Badge tone="red">{t('dev.people.lockedLong')}</Badge>}
           </span>

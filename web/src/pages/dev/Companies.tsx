@@ -206,7 +206,7 @@ export function CompanyDetailPage() {
             {t('dev.companies.title')}
           </ButtonLink>
         }
-        title={company.name}
+        title={<bdi>{company.name}</bdi>}
         description={
           <>
             <Ltr>{company.timezone}</Ltr> · {t('dev.companies.workers', { count: company.workers })} ·{' '}

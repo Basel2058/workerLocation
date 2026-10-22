@@ -20,7 +20,7 @@ import { Badge, Button, Card, cx, EmptyState, ErrorBox, Input, Kv, Ltr, PageHead
 import { get, post, qs } from '../../lib/api';
 import { fmtDateTime, fmtDistance, fmtNumber, fmtRelative } from '../../lib/format';
 import { flagInfo, rejectReason } from '../../lib/flags';
-import { t } from '../../lib/i18n';
+import { isolate, t } from '../../lib/i18n';
 import { deviceLabelShort, roleLabel } from './util';
 
 const UTC = 'UTC';
@@ -110,8 +110,13 @@ export function PunchLogPage() {
                     {p.workerName} <span className="font-normal text-muted">· {punchType(p.type)}</span>
                   </span>
                   <span className="block truncate text-xs text-muted">
-                    {p.companyName}
-                    {p.siteName ? ` · ${p.siteName}` : ''}
+                    <bdi>{p.companyName}</bdi>
+                    {p.siteName && (
+                      <>
+                        {' · '}
+                        <bdi>{p.siteName}</bdi>
+                      </>
+                    )}
                     {p.distanceM !== null ? ` · ${fmtDistance(p.distanceM)}` : ''}
                     {p.accuracy !== null ? ` · ±${fmtDistance(p.accuracy)}` : ''}
                   </span>
@@ -178,7 +183,7 @@ function PunchDetail({ punch, onClose }: { punch: PunchRow | null; onClose: () =
       onClose={onClose}
       size="lg"
       title={punch ? `${punch.workerName} · ${punchType(punch.type)}` : ''}
-      description={punch ? `${punch.companyName} · ${fmtDateTime(punch.at, UTC)} UTC` : ''}
+      description={punch ? `${isolate(punch.companyName)} · ${fmtDateTime(punch.at, UTC)} UTC` : ''}
     >
       {!p ? (
         <PageLoader />
@@ -317,7 +322,7 @@ export function AlertsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm">{e.message}</p>
                   <p className="text-xs text-muted">
-                    {fmtDateTime(e.at, UTC)} UTC · {e.companyName ?? t('dev.alerts.noCompany')} · <Ltr>{e.kind}</Ltr>
+                    {fmtDateTime(e.at, UTC)} UTC · <bdi>{e.companyName ?? t('dev.alerts.noCompany')}</bdi> · <Ltr>{e.kind}</Ltr>
                     {e.ip && (
                       <>
                         {' · '}
@@ -384,7 +389,13 @@ export function AuditPage() {
                   <>
                     <p className="text-sm">{a.summary || <Ltr>{a.action}</Ltr>}</p>
                     <p className="text-xs text-muted">
-                      {fmtDateTime(a.at, UTC)} UTC · {a.actorName} ({roleLabel(a.actorRole)}){a.companyName ? ` · ${a.companyName}` : ''}
+                      {fmtDateTime(a.at, UTC)} UTC · <bdi>{a.actorName}</bdi> ({roleLabel(a.actorRole)})
+                      {a.companyName && (
+                        <>
+                          {' · '}
+                          <bdi>{a.companyName}</bdi>
+                        </>
+                      )}
                     </p>
                   </>
                 }
@@ -539,7 +550,13 @@ export function SessionsPage() {
                   </p>
                   <p className="truncate text-xs text-muted" title={s.userAgent}>
                     {roleLabel(s.role)}
-                    {s.companyName ? ` · ${s.companyName}` : ''} · {deviceLabelShort(s.userAgent)} · <Ltr>{s.ip}</Ltr> ·{' '}
+                    {s.companyName && (
+                      <>
+                        {' · '}
+                        <bdi>{s.companyName}</bdi>
+                      </>
+                    )}{' '}
+                    · <bdi>{deviceLabelShort(s.userAgent)}</bdi> · <Ltr>{s.ip}</Ltr> ·{' '}
                     {t('dev.sessions.active', { when: fmtRelative(s.lastSeenAt) })}
                   </p>
                 </div>

@@ -16,7 +16,7 @@ export const manager: Translation<typeof en> = {
   },
   shared: {
     callName: 'الاتصال بـ{name}',
-    callPhone: 'الاتصال بالرقم {phone}',
+    callPhone: 'اتصال {phone}',
     photoOf: 'صورة {name}',
     quote: '«{text}»',
     approve: 'موافقة',

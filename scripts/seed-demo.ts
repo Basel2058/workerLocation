@@ -6,6 +6,7 @@
 import { hashPassword } from '../server/src/auth/password';
 import { loadConfig } from '../server/src/config';
 import { openDatabase, type DB } from '../server/src/db';
+import { msg, storeMsg } from '../server/src/i18n';
 import { randomToken } from '../server/src/lib/crypto';
 import { addDays, addMinutes, nowIso, todayLocal, zonedToUtc } from '../server/src/lib/time';
 
@@ -328,13 +329,16 @@ async function main() {
     request_note: 'My old phone broke',
     created_at: at(-30),
   });
+  const suspicious = storeMsg(msg('Blocked a suspicious check-in by {name}.', { name: priya!.name }));
   insert(db, 'security_events', {
     at: at(-12),
     company_id: companyId,
     user_id: priya!.id,
     kind: 'suspicious_punch',
     severity: 'high',
-    message: `Blocked a suspicious check-in by ${priya!.name}.`,
+    // Stored like the server does, so it shows in each reader's language.
+    message: suspicious.english,
+    message_i18n: suspicious.i18n,
     details: JSON.stringify({ flags: ['ACCURACY_ZERO', 'NO_JITTER', 'MATCHES_SITE_CENTER'], score: 115 }),
     ip: '198.51.100.77',
   });

@@ -143,15 +143,14 @@ export function fmtRelative(iso: string | null | undefined, now = Date.now()): s
 }
 
 export function fmtBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let v = bytes / 1024;
+  const units = ['byte', 'kilobyte', 'megabyte', 'gigabyte', 'terabyte'] as const;
+  let v = bytes;
   let i = 0;
   while (v >= 1024 && i < units.length - 1) {
     v /= 1024;
     i++;
   }
-  return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
+  return nf({ style: 'unit', unit: units[i], unitDisplay: 'short', maximumFractionDigits: i > 0 && v < 10 ? 1 : 0 }).format(v);
 }
 
 export function fmtUptime(sec: number): string {

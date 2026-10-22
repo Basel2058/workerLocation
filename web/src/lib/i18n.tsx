@@ -69,9 +69,22 @@ export function applyLocale(locale: Locale): void {
   }
 }
 
+/**
+ * Wraps text in invisible Unicode isolation marks so it keeps its own direction inside a sentence of the other
+ * direction: "Main St." stays "Main St." in a Hebrew line instead of turning into ".Main St".
+ */
+export function isolate(text: string): string {
+  return `\u2068${text}\u2069`;
+}
+
 /** A message in a given language (its catalog must be loaded). */
 export function translate(locale: Locale, key: MsgKey, params?: Params): string {
-  return formatMessage(locale, { primary: catalogs[locale], fallback: catalogs.en! }, key, params);
+  // In right-to-left languages, names and other inserted text are isolated (see isolate()).
+  const values =
+    params && LOCALE_INFO[locale].dir === 'rtl'
+      ? Object.fromEntries(Object.entries(params).map(([k, v]) => [k, typeof v === 'string' && v ? isolate(v) : v]))
+      : params;
+  return formatMessage(locale, { primary: catalogs[locale], fallback: catalogs.en! }, key, values);
 }
 
 /**

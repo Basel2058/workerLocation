@@ -165,7 +165,7 @@ export function OverviewPage() {
                 <div className="min-w-0">
                   <p className="text-sm">{e.message}</p>
                   <p className="text-xs text-muted">
-                    {e.companyName ?? t('dev.overview.noCompany')} · {fmtRelative(e.at)}
+                    <bdi>{e.companyName ?? t('dev.overview.noCompany')}</bdi> · {fmtRelative(e.at)}
                   </p>
                 </div>
               </div>

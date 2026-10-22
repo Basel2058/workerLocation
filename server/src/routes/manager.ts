@@ -371,12 +371,18 @@ export interface AuditRow {
   ip: string;
 }
 
+/** Built-in actors (background jobs, the server console) are named in the reader's language. */
+const SYSTEM_ACTOR_NAMES: Record<string, () => string> = {
+  System: () => tr('System'),
+  'Server console': () => tr('Server console'),
+};
+
 export function pageAudit(rows: AuditRow[], limit: number): Paged<AuditEntry> {
   const items = rows.slice(0, limit).map((r) => ({
     id: r.id,
     at: r.at,
     actorId: r.actor_id,
-    actorName: r.actor_name,
+    actorName: r.actor_role === 'system' ? (SYSTEM_ACTOR_NAMES[r.actor_name]?.() ?? r.actor_name) : r.actor_name,
     actorRole: r.actor_role,
     companyId: r.company_id,
     companyName: r.company_name,
