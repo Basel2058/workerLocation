@@ -67,8 +67,9 @@ workers `omar`, `aisha`, … / `worker123`. The demo workplaces are in central L
 phone, seed with your own location: `DEMO_LAT=… DEMO_LNG=… DEMO_TZ=Asia/Amman npm run seed:demo -- --reset`,
 or add a workplace at your location in the owner console (**Companies → Workplaces → Add → I'm here**).
 
-Location, camera and the phone key only work on **https** or `localhost`. To test on a phone, deploy (below) or use a
-tunnel such as `cloudflared tunnel --url http://localhost:5173`.
+Location, camera and the phone key only work on **https** or `localhost`. To test on a phone, deploy (below) or run
+the built app and open it through a tunnel: `npm run build && npm start`, then
+`cloudflared tunnel --url http://localhost:3000`.
 
 Without the demo, the first start creates the owner account and prints its one-time password in the server output.
 
