@@ -1,6 +1,7 @@
 import type { PresenceCheck, PresenceOutcome, PunchChallenge, SignedEnvelope } from '../../../shared/types';
 import type { DB } from '../db';
 import type { CompanyRow, PresenceRow } from '../db/rows';
+import { msg, tr } from '../i18n';
 import { sha256Hex } from '../lib/crypto';
 import { badRequest, conflict, notFound } from '../lib/errors';
 import { nowIso } from '../lib/time';
@@ -71,7 +72,7 @@ export function pendingPresence(db: DB, workerId: number): PresenceCheck | null 
 export function requestPresence(db: DB, push: PushService, actor: Actor, company: CompanyRow, workerId: number): PresenceCheck {
   const worker = getCompanyWorker(db, company.id, workerId);
   const entry = openEntry(db, worker.id);
-  if (!entry) throw conflict(`${worker.full_name} is not checked in right now.`, 'NOT_IN');
+  if (!entry) throw conflict(tr('{name} is not checked in right now.', { name: worker.full_name }), 'NOT_IN');
   const existing = pendingPresence(db, worker.id);
   if (existing) return existing;
   const now = nowIso();
@@ -88,11 +89,11 @@ export function requestPresence(db: DB, push: PushService, actor: Actor, company
     companyId: company.id,
     entity: 'presence_check',
     entityId: id,
-    summary: `Asked ${worker.full_name} to confirm they are at work`,
+    summary: msg('Asked {name} to confirm they are at work', { name: worker.full_name }),
   });
   push.notifyUser(worker.id, {
-    title: 'Are you at work?',
-    body: `Please confirm your location within ${PRESENCE_TTL_MIN} minutes.`,
+    title: msg('Are you at work?'),
+    body: msg('Please confirm your location within {minutes} minutes.', { minutes: PRESENCE_TTL_MIN }),
     url: '/',
     tag: 'presence',
   });
@@ -194,7 +195,14 @@ export function submitPresence(ctx: PunchContext, push: PushService, envelope: S
         userId: user.id,
         kind: 'presence_failed',
         severity: 'warn',
-        message: `${user.full_name} failed a presence check${risk.distanceM !== null && risk.site ? ` (${risk.distanceM} m from ${risk.site.name})` : ''}.`,
+        message:
+          risk.distanceM !== null && risk.site
+            ? msg('{name} failed a presence check ({distance} from {site}).', {
+                name: user.full_name,
+                distance: { meters: risk.distanceM },
+                site: risk.site.name,
+              })
+            : msg('{name} failed a presence check.', { name: user.full_name }),
         details: { checkId: check.id, reason: risk.reason, flags: risk.flags },
         ip: ctx.ip,
       });
@@ -202,8 +210,8 @@ export function submitPresence(ctx: PunchContext, push: PushService, envelope: S
   })();
   if (status === 'failed') {
     push.notifyManagers(company.id, {
-      title: 'Presence check failed',
-      body: `${user.full_name} is not at the workplace.`,
+      title: msg('Presence check failed'),
+      body: msg('{name} is not at the workplace.', { name: user.full_name }),
       url: '/m',
       tag: `presence-${check.id}`,
     });
@@ -214,10 +222,12 @@ export function submitPresence(ctx: PunchContext, push: PushService, envelope: S
     distanceM: risk.distanceM,
     message:
       status === 'passed'
-        ? 'Thanks! Your manager can see you are at work.'
-        : risk.reason === 'OUTSIDE_GEOFENCE'
-          ? `You are ${risk.distanceM ?? '?'} m from ${risk.site?.name ?? 'your workplace'}. Your manager has been told.`
-          : 'Your location could not be confirmed. Your manager has been told.',
+        ? tr('Thanks! Your manager can see you are at work.')
+        : risk.reason === 'OUTSIDE_GEOFENCE' && risk.distanceM !== null
+          ? risk.site
+            ? tr('You are {distance} from {site}. Your manager has been told.', { distance: { meters: risk.distanceM }, site: risk.site.name })
+            : tr('You are {distance} from your workplace. Your manager has been told.', { distance: { meters: risk.distanceM } })
+          : tr('Your location could not be confirmed. Your manager has been told.'),
   };
 }
 
@@ -236,12 +246,15 @@ export function expirePresenceChecks(db: DB, push: PushService, now = nowIso()):
       userId: row.worker_id,
       kind: 'presence_expired',
       severity: 'warn',
-      message: `${row.full_name} did not answer a presence check within ${PRESENCE_TTL_MIN} minutes.`,
+      message: msg('{name} did not answer a presence check within {minutes} minutes.', {
+        name: row.full_name,
+        minutes: PRESENCE_TTL_MIN,
+      }),
       details: { checkId: row.id },
     });
     push.notifyManagers(row.company_id, {
-      title: 'No answer to presence check',
-      body: `${row.full_name} did not confirm being at work.`,
+      title: msg('No answer to presence check'),
+      body: msg('{name} did not confirm being at work.', { name: row.full_name }),
       url: '/m',
       tag: `presence-${row.id}`,
     });

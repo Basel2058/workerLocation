@@ -1,3 +1,5 @@
+import { t } from './i18n';
+
 // Live selfie capture. Photos come straight from the camera stream (not the gallery), so an old picture
 // cannot be uploaded instead.
 
@@ -36,7 +38,7 @@ export async function startCamera(video: HTMLVideoElement): Promise<MediaStream>
 }
 
 export function stopCamera(stream: MediaStream | null | undefined): void {
-  stream?.getTracks().forEach((t) => t.stop());
+  stream?.getTracks().forEach((track) => track.stop());
 }
 
 export interface Capture {
@@ -68,17 +70,7 @@ export function captureFrame(video: HTMLVideoElement, size = 480): Capture {
   return { dataUrl: canvas.toDataURL('image/jpeg', 0.72), brightness: sum / (px.length / 4) };
 }
 
-export const cameraFailureText: Record<CameraFailure, { title: string; body: string }> = {
-  unsupported: {
-    title: 'Camera not available',
-    body: 'This browser cannot use the camera. Open the app in Chrome or Safari on your phone.',
-  },
-  denied: {
-    title: 'Camera is blocked',
-    body: 'A quick photo is needed to check in. Allow the camera for this app in your phone Settings, then try again.',
-  },
-  unavailable: {
-    title: 'Camera did not start',
-    body: 'Close other apps that use the camera and try again.',
-  },
-};
+/** What to tell the worker when the camera could not be used, in the app's language. */
+export function cameraFailureText(kind: CameraFailure): { title: string; body: string } {
+  return { title: t(`worker.camera.${kind}.title`), body: t(`worker.camera.${kind}.body`) };
+}

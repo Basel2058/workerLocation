@@ -2,6 +2,7 @@ import { Ellipsis, LogOut, UserRound } from 'lucide-react';
 import { useState, type ComponentType, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router';
 import { useAuth } from '../lib/auth';
+import { t } from '../lib/i18n';
 import { Dialog } from './Dialog';
 import { LogoMark } from './Logo';
 import { Avatar, cx } from './ui';
@@ -23,7 +24,7 @@ function Badge({ count, className }: { count?: number; className?: string }) {
         className,
       )}
     >
-      {count > 99 ? '99+' : count}
+      {count > 99 ? t('ui.badge.overflow') : count}
     </span>
   );
 }
@@ -57,7 +58,7 @@ export function AppShell({
   return (
     <div className="min-h-dvh">
       {/* Sidebar (desktop) */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-line bg-surface lg:flex">
+      <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-line bg-surface lg:flex">
         <div className="flex items-center gap-3 px-5 pt-5 pb-4">
           <LogoMark size={34} />
           <div className="min-w-0">
@@ -65,7 +66,7 @@ export function AppShell({
             {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
           </div>
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label="Main">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-2" aria-label={t('ui.shell.mainNav')}>
           {items.map(({ to, label, icon: Icon, badge, end }) => (
             <NavLink
               key={to}
@@ -94,14 +95,14 @@ export function AppShell({
             <Avatar name={user?.fullName ?? '?'} size={32} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink">{user?.fullName}</p>
-              <p className="truncate text-xs text-muted">Account settings</p>
+              <p className="truncate text-xs text-muted">{t('ui.shell.accountSettings')}</p>
             </div>
           </NavLink>
           <button
             onClick={() => void logout()}
             className="mt-1 flex h-9 w-full items-center gap-3 rounded-xl px-3 text-sm text-muted hover:bg-surface-2 hover:text-ink"
           >
-            <LogOut className="size-4" /> Sign out
+            <LogOut className="size-4" /> {t('ui.shell.signOut')}
           </button>
         </div>
       </aside>
@@ -114,19 +115,19 @@ export function AppShell({
             <p className="truncate text-[15px] leading-tight font-semibold">{title}</p>
             {subtitle && <p className="truncate text-[11px] leading-tight text-muted">{subtitle}</p>}
           </div>
-          <NavLink to={accountTo} aria-label="Account" className="rounded-full">
+          <NavLink to={accountTo} aria-label={t('ui.shell.account')} className="rounded-full">
             <Avatar name={user?.fullName ?? '?'} size={32} />
           </NavLink>
         </div>
       </header>
 
-      <div className="min-w-0 lg:pl-64">
+      <div className="min-w-0 lg:ps-64">
         {banner}
         <main className="mx-auto max-w-[1400px] px-4 pt-5 pb-28 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">{children}</main>
       </div>
 
       {/* Bottom tabs (phones) */}
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/90 backdrop-blur-xl lg:hidden" aria-label="Main">
+      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/90 backdrop-blur-xl lg:hidden" aria-label={t('ui.shell.mainNav')}>
         <div className="grid" style={{ gridTemplateColumns: `repeat(${primary.length + (overflow.length ? 1 : 0)}, minmax(0, 1fr))` }}>
           {primary.map(({ to, label, icon: Icon, badge, end }) => (
             <NavLink
@@ -142,7 +143,7 @@ export function AppShell({
             >
               <Icon className="size-[22px]" strokeWidth={1.9} />
               <span className="max-w-full truncate px-1">{label}</span>
-              <Badge count={badge} className="absolute top-1.5 left-1/2 ml-2 h-[18px] min-w-[18px] text-[10px]" />
+              <Badge count={badge} className="absolute top-1.5 start-1/2 ms-2 h-[18px] min-w-[18px] text-[10px]" />
             </NavLink>
           ))}
           {overflow.length > 0 && (
@@ -151,13 +152,13 @@ export function AppShell({
               className={cx('flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium', overflowActive ? 'text-brand' : 'text-muted')}
             >
               <Ellipsis className="size-[22px]" />
-              More
+              {t('ui.shell.more')}
             </button>
           )}
         </div>
       </nav>
 
-      <Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title="More">
+      <Dialog open={moreOpen} onClose={() => setMoreOpen(false)} title={t('ui.shell.more')}>
         <div className="grid gap-1">
           {overflow.map(({ to, label, icon: Icon, badge }) => (
             <NavLink
@@ -172,7 +173,7 @@ export function AppShell({
             </NavLink>
           ))}
           <NavLink to={accountTo} onClick={() => setMoreOpen(false)} className="flex h-12 items-center gap-3 rounded-xl px-3 text-[15px] font-medium hover:bg-surface-2">
-            <UserRound className="size-5 text-muted" /> Account
+            <UserRound className="size-5 text-muted" /> {t('ui.shell.account')}
           </NavLink>
         </div>
       </Dialog>

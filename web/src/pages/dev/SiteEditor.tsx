@@ -5,8 +5,10 @@ import type { Site } from '../../../../shared/types';
 import { Dialog, useConfirm } from '../../components/Dialog';
 import { SitePicker } from '../../components/maps';
 import { useToast } from '../../components/Toast';
-import { Button, Field, Input, Switch, Textarea } from '../../components/ui';
+import { Button, Field, Input, Ltr, Switch, Textarea } from '../../components/ui';
 import { del, errorMessage, get, patch, post } from '../../lib/api';
+import { fmtDistance } from '../../lib/format';
+import { t } from '../../lib/i18n';
 
 interface Draft {
   name: string;
@@ -72,17 +74,17 @@ export function SiteEditor({
     try {
       const res = await get<Array<{ name: string; lat: number; lng: number }>>(`/api/dev/geocode?q=${encodeURIComponent(query)}`);
       setResults(res);
-      if (res.length === 0) setError('No places found. Try another search or tap the map.');
+      if (res.length === 0) setError(t('dev.sites.noResults'));
     } catch (err) {
       setError(errorMessage(err));
     }
   };
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) return setError('Location is not available in this browser.');
+    if (!navigator.geolocation) return setError(t('dev.sites.noGeolocation'));
     navigator.geolocation.getCurrentPosition(
       (p) => set({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => setError('Could not get your location. Allow location for this site and try again.'),
+      () => setError(t('dev.sites.locationFailed')),
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     );
   };
@@ -92,7 +94,8 @@ export function SiteEditor({
       const { ip } = await get<{ ip: string }>('/api/dev/my-ip');
       const list = d.networks.split('\n').map((s) => s.trim()).filter(Boolean);
       if (!list.includes(ip)) set({ networks: [...list, ip].join('\n') });
-      toast.info(`Added ${ip}. Only do this while connected to the workplace Wi-Fi.`);
+      // The address is kept left-to-right inside right-to-left text (U+2066 … U+2069).
+      toast.info(t('dev.sites.ipAdded', { ip: `\u2066${ip}\u2069` }));
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -115,7 +118,7 @@ export function SiteEditor({
     try {
       if (site) await patch(`/api/dev/sites/${site.id}`, body);
       else await post('/api/dev/sites', { ...body, companyId });
-      toast.success(site ? 'Workplace saved' : 'Workplace added');
+      toast.success(site ? t('dev.sites.saved') : t('dev.sites.added'));
       await qc.invalidateQueries({ queryKey: ['dev'] });
       await qc.invalidateQueries({ queryKey: ['m'] });
       onClose();
@@ -128,10 +131,16 @@ export function SiteEditor({
 
   const remove = async () => {
     if (!site) return;
-    if (!(await confirm({ title: `Delete ${site.name}?`, body: 'Only possible when nobody ever checked in there. Otherwise turn it off.', confirmText: 'Delete', variant: 'danger' }))) return;
+    const ok = await confirm({
+      title: t('dev.sites.confirmDeleteTitle', { name: site.name }),
+      body: t('dev.sites.confirmDeleteBody'),
+      confirmText: t('common.delete'),
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await del(`/api/dev/sites/${site.id}`);
-      toast.success('Workplace deleted');
+      toast.success(t('dev.sites.deleted'));
       await qc.invalidateQueries({ queryKey: ['dev'] });
       onClose();
     } catch (err) {
@@ -146,20 +155,20 @@ export function SiteEditor({
       open={open}
       onClose={onClose}
       size="xl"
-      title={site ? `Edit ${site.name}` : 'Add a workplace'}
-      description="Workers can only check in inside the circle."
+      title={site ? t('dev.sites.editTitle', { name: site.name }) : t('dev.sites.addTitle')}
+      description={t('dev.sites.dialogDescription')}
       footer={
         <>
           {site && (
-            <Button variant="dangerSoft" icon={Trash2} className="mr-auto" onClick={() => void remove()}>
-              Delete
+            <Button variant="dangerSoft" icon={Trash2} className="me-auto" onClick={() => void remove()}>
+              {t('common.delete')}
             </Button>
           )}
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant="brand" loading={busy} disabled={!valid} onClick={() => void save()}>
-            Save
+            {t('common.save')}
           </Button>
         </>
       }
@@ -168,20 +177,20 @@ export function SiteEditor({
         <div className="min-w-0 space-y-3">
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-faint" />
+              <Search className="absolute top-1/2 start-3 size-4 -translate-y-1/2 text-faint" />
               <Input
-                className="pl-9"
-                placeholder="Search an address"
+                className="ps-9"
+                placeholder={t('dev.sites.searchPlaceholder')}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && query.trim().length >= 3 && void search()}
               />
             </div>
             <Button onClick={() => void search()} disabled={query.trim().length < 3}>
-              Search
+              {t('common.search')}
             </Button>
-            <Button icon={LocateFixed} onClick={useMyLocation} title="Use where I am now">
-              <span className="hidden sm:inline">I’m here</span>
+            <Button icon={LocateFixed} onClick={useMyLocation} title={t('dev.sites.hereTitle')}>
+              <span className="hidden sm:inline">{t('dev.sites.here')}</span>
             </Button>
           </div>
           {results.length > 0 && (
@@ -193,7 +202,7 @@ export function SiteEditor({
                     set({ lat: r.lat, lng: r.lng, address: d.address || r.name.slice(0, 300) });
                     setResults([]);
                   }}
-                  className="block w-full px-3 py-2 text-left text-sm hover:bg-surface-2"
+                  className="block w-full px-3 py-2 text-start text-sm hover:bg-surface-2"
                 >
                   {r.name}
                 </button>
@@ -207,22 +216,22 @@ export function SiteEditor({
             className="h-[340px] lg:h-[460px]"
           />
           <p className="text-xs text-muted">
-            Tap the map to place the workplace, or drag the pin.
+            {t('dev.sites.mapHint')}
             {d.lat !== null && d.lng !== null && (
-              <span className="tabular ml-1">
+              <Ltr className="tabular ms-1">
                 ({d.lat.toFixed(6)}, {d.lng.toFixed(6)})
-              </span>
+              </Ltr>
             )}
           </p>
         </div>
         <div className="space-y-4">
-          <Field label="Name">
-            <Input value={d.name} onChange={(e) => set({ name: e.target.value })} placeholder="Main warehouse" />
+          <Field label={t('dev.sites.name')}>
+            <Input value={d.name} onChange={(e) => set({ name: e.target.value })} placeholder={t('dev.sites.namePlaceholder')} />
           </Field>
-          <Field label="Address" optional>
+          <Field label={t('dev.sites.address')} optional>
             <Input value={d.address} onChange={(e) => set({ address: e.target.value })} />
           </Field>
-          <Field label={`Allowed area: ${d.radiusM} m around the pin`} hint="100–200 m works for most places. Bigger is easier for workers but easier to cheat.">
+          <Field label={t('dev.sites.allowedArea', { distance: fmtDistance(d.radiusM) })} hint={t('dev.sites.allowedAreaHint')}>
             <input
               type="range"
               min={20}
@@ -233,23 +242,27 @@ export function SiteEditor({
               className="w-full accent-[var(--color-brand)]"
             />
           </Field>
-          <Field
-            label="Workplace internet (optional)"
-            hint="Public IP addresses of the workplace Wi-Fi, one per line. Check-ins from them are trusted more, even with weak GPS indoors."
-          >
-            <Textarea rows={3} value={d.networks} onChange={(e) => set({ networks: e.target.value })} placeholder="203.0.113.10" className="font-mono text-sm" />
+          <Field label={t('dev.sites.network')} hint={t('dev.sites.networkHint')}>
+            <Textarea
+              rows={3}
+              value={d.networks}
+              onChange={(e) => set({ networks: e.target.value })}
+              placeholder="203.0.113.10"
+              dir="ltr"
+              className="font-mono text-sm rtl:text-right"
+            />
           </Field>
           <Button size="sm" variant="ghost" icon={Wifi} className="-mt-2" onClick={() => void addMyIp()}>
-            Add my current address
+            {t('dev.sites.addMyIp')}
           </Button>
           <Switch
             checked={d.requireNetwork}
             onChange={(v) => set({ requireNetwork: v })}
-            label="Require workplace internet"
-            description="Only accept check-ins from the addresses above."
+            label={t('dev.sites.requireNetwork')}
+            description={t('dev.sites.requireNetworkHint')}
             disabled={!d.networks.trim()}
           />
-          <Switch checked={d.active} onChange={(v) => set({ active: v })} label="Active" description="Turned-off workplaces keep their history." />
+          <Switch checked={d.active} onChange={(v) => set({ active: v })} label={t('dev.sites.active')} description={t('dev.sites.activeHint')} />
           {error && <p className="rounded-xl bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">{error}</p>}
         </div>
       </div>

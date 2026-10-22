@@ -1,18 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CircleAlert, CircleCheck, Database, Download, Play, ShieldAlert, TriangleAlert } from 'lucide-react';
-import { REJECT_REASONS, type DevOverview } from '../../../../shared/types';
+import type { DevOverview } from '../../../../shared/types';
 import { useToast } from '../../components/Toast';
-import { Badge, Button, ButtonLink, Card, CardHeader, cx, ErrorBox, Kv, PageHeader, PageLoader, Stat } from '../../components/ui';
+import { Badge, Button, ButtonLink, Card, CardHeader, cx, ErrorBox, Kv, Ltr, PageHeader, PageLoader, Stat } from '../../components/ui';
 import { downloadFile, get, post } from '../../lib/api';
-import { fmtBytes, fmtRelative, fmtUptime, plural } from '../../lib/format';
+import { fmtBytes, fmtNumber, fmtRelative, fmtUptime } from '../../lib/format';
+import { rejectReason } from '../../lib/flags';
+import { t } from '../../lib/i18n';
 import { PunchChart } from './PunchChart';
 
-const JOB_NAMES: Record<string, string> = {
-  attendance: 'Missing check-outs & presence checks',
-  cleanup: 'Clean-up (old photos, sessions, logs)',
-  integrity: 'Database health check',
-  backup: 'Daily backup',
-};
+function jobName(name: string): string {
+  const names: Record<string, string> = {
+    attendance: t('dev.overview.jobs.attendance'),
+    cleanup: t('dev.overview.jobs.cleanup'),
+    integrity: t('dev.overview.jobs.integrity'),
+    backup: t('dev.overview.jobs.backup'),
+  };
+  return names[name] ?? name;
+}
 
 export function OverviewPage() {
   const qc = useQueryClient();
@@ -21,7 +26,7 @@ export function OverviewPage() {
   const runJob = useMutation({
     mutationFn: (name: string) => post(`/api/dev/jobs/${name}/run`),
     onSuccess: () => {
-      toast.success('Job finished');
+      toast.success(t('dev.overview.jobFinished'));
       void qc.invalidateQueries({ queryKey: ['dev', 'overview'] });
     },
     onError: (e) => toast.error(e),
@@ -36,8 +41,8 @@ export function OverviewPage() {
   return (
     <div className="animate-fade-up">
       <PageHeader
-        title="Overview"
-        description="Is everything working? Health, activity and problems across all companies."
+        title={t('dev.overview.title')}
+        description={t('dev.overview.description')}
         actions={
           <Button
             icon={Download}
@@ -45,7 +50,7 @@ export function OverviewPage() {
               downloadFile('/api/dev/backup').catch((e) => toast.error(e))
             }
           >
-            Download backup
+            {t('dev.overview.downloadBackup')}
           </Button>
         }
       />
@@ -54,7 +59,7 @@ export function OverviewPage() {
         <div className="flex items-start gap-3">
           {failing.length ? <CircleAlert className="mt-0.5 size-6 text-amber-500" /> : <CircleCheck className="mt-0.5 size-6 text-emerald-500" />}
           <div className="min-w-0 flex-1">
-            <p className="text-lg font-semibold">{failing.length ? `${failing.length} thing${failing.length === 1 ? '' : 's'} need attention` : 'All systems normal'}</p>
+            <p className="text-lg font-semibold">{failing.length ? t('dev.overview.needAttention', { count: failing.length }) : t('dev.shell.allNormal')}</p>
             <div className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
               {d.checks.map((c) => (
                 <div key={c.name} className="flex items-start gap-2 text-sm">
@@ -71,26 +76,30 @@ export function OverviewPage() {
       </Card>
 
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <Stat label="Companies" value={d.stats.companies} hint={plural(d.stats.sitesActive, 'workplace')} />
-        <Stat label="Workers" value={d.stats.workers} hint={plural(d.stats.managers, 'manager')} />
-        <Stat label="At work now" value={d.stats.openEntries} tone="green" />
-        <Stat label="Check-ins, 24 h" value={today.accepted + today.review + today.rejected} hint={`${today.rejected} rejected`} />
-        <Stat label="To review" value={d.stats.pendingReviews} tone="amber" hint="waiting for managers" />
-        <Stat label="Failed sign-ins, 24 h" value={d.stats.loginsFailed24h} tone={d.stats.loginsFailed24h > 20 ? 'red' : undefined} />
+        <Stat label={t('dev.overview.stats.companies')} value={d.stats.companies} hint={t('dev.overview.stats.workplaces', { count: d.stats.sitesActive })} />
+        <Stat label={t('dev.overview.stats.workers')} value={d.stats.workers} hint={t('dev.overview.stats.managers', { count: d.stats.managers })} />
+        <Stat label={t('dev.overview.stats.atWork')} value={d.stats.openEntries} tone="green" />
+        <Stat
+          label={t('dev.overview.stats.punches')}
+          value={today.accepted + today.review + today.rejected}
+          hint={t('dev.overview.stats.rejected', { count: today.rejected })}
+        />
+        <Stat label={t('dev.overview.stats.toReview')} value={d.stats.pendingReviews} tone="amber" hint={t('dev.overview.stats.toReviewHint')} />
+        <Stat label={t('dev.overview.stats.failedSignIns')} value={d.stats.loginsFailed24h} tone={d.stats.loginsFailed24h > 20 ? 'red' : undefined} />
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[2fr_1fr]">
         <Card>
-          <CardHeader title="Check-ins per hour" description="Last 24 hours, all companies" />
+          <CardHeader title={t('dev.overview.chartTitle')} description={t('dev.overview.chartDescription')} />
           <div className="px-5 pb-5">
             <PunchChart data={d.punchesByHour} />
           </div>
         </Card>
         <Card>
-          <CardHeader title="Why check-ins were rejected" description="Last 24 hours" />
+          <CardHeader title={t('dev.overview.rejectTitle')} description={t('dev.overview.last24h')} />
           <div className="px-5 pb-5">
             {d.rejectReasons24h.length === 0 ? (
-              <p className="text-sm text-muted">No rejected check-ins.</p>
+              <p className="text-sm text-muted">{t('dev.overview.noRejected')}</p>
             ) : (
               <div className="space-y-2.5">
                 {d.rejectReasons24h.map((r) => {
@@ -98,7 +107,7 @@ export function OverviewPage() {
                   return (
                     <div key={r.reason}>
                       <div className="mb-1 flex justify-between text-sm">
-                        <span>{REJECT_REASONS[r.reason] ?? r.reason}</span>
+                        <span>{rejectReason(r.reason)}</span>
                         <span className="tabular font-medium">{r.count}</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-surface-3">
@@ -109,23 +118,30 @@ export function OverviewPage() {
                 })}
               </div>
             )}
-            <p className="mt-4 text-[13px] text-muted">A sudden jump in one reason (for example "GPS not precise enough") can mean a phone or browser update broke something.</p>
+            <p className="mt-4 text-[13px] text-muted">{t('dev.overview.rejectHint', { example: rejectReason('LOW_ACCURACY') })}</p>
           </div>
         </Card>
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card>
-          <CardHeader title="Recent errors" actions={<ButtonLink to="/dev/logs" size="sm" variant="ghost">All</ButtonLink>} />
+          <CardHeader
+            title={t('dev.overview.recentErrors')}
+            actions={
+              <ButtonLink to="/dev/logs" size="sm" variant="ghost">
+                {t('common.all')}
+              </ButtonLink>
+            }
+          />
           <div className="divide-y divide-line border-t border-line">
-            {d.recentErrors.length === 0 && <p className="px-5 py-4 text-sm text-muted">No unresolved errors.</p>}
+            {d.recentErrors.length === 0 && <p className="px-5 py-4 text-sm text-muted">{t('dev.overview.noErrors')}</p>}
             {d.recentErrors.map((e) => (
               <div key={e.id} className="flex items-start gap-3 px-5 py-3">
                 <TriangleAlert className="mt-0.5 size-4 shrink-0 text-rose-500" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{e.message}</p>
                   <p className="text-xs text-muted">
-                    {e.source} · {fmtRelative(e.at)}
+                    <Ltr>{e.source}</Ltr> · {fmtRelative(e.at)}
                   </p>
                 </div>
               </div>
@@ -133,16 +149,23 @@ export function OverviewPage() {
           </div>
         </Card>
         <Card>
-          <CardHeader title="Recent security events" actions={<ButtonLink to="/dev/alerts" size="sm" variant="ghost">All</ButtonLink>} />
+          <CardHeader
+            title={t('dev.overview.recentSecurity')}
+            actions={
+              <ButtonLink to="/dev/alerts" size="sm" variant="ghost">
+                {t('common.all')}
+              </ButtonLink>
+            }
+          />
           <div className="divide-y divide-line border-t border-line">
-            {d.recentSecurity.length === 0 && <p className="px-5 py-4 text-sm text-muted">Nothing suspicious.</p>}
+            {d.recentSecurity.length === 0 && <p className="px-5 py-4 text-sm text-muted">{t('dev.overview.nothingSuspicious')}</p>}
             {d.recentSecurity.map((e) => (
               <div key={e.id} className="flex items-start gap-3 px-5 py-3">
                 <ShieldAlert className={cx('mt-0.5 size-4 shrink-0', e.severity === 'high' ? 'text-rose-500' : 'text-amber-500')} />
                 <div className="min-w-0">
                   <p className="text-sm">{e.message}</p>
                   <p className="text-xs text-muted">
-                    {e.companyName ?? 'No company'} · {fmtRelative(e.at)}
+                    {e.companyName ?? t('dev.overview.noCompany')} · {fmtRelative(e.at)}
                   </p>
                 </div>
               </div>
@@ -153,39 +176,49 @@ export function OverviewPage() {
 
       <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[3fr_2fr]">
         <Card>
-          <CardHeader title="Background jobs" description="They run by themselves; you can also start one now." />
+          <CardHeader title={t('dev.overview.jobsTitle')} description={t('dev.overview.jobsDescription')} />
           <div className="divide-y divide-line border-t border-line">
             {d.jobs.map((j) => (
               <div key={j.name} className="flex flex-wrap items-center gap-3 px-5 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium">{JOB_NAMES[j.name] ?? j.name}</p>
+                  <p className="text-sm font-medium">{jobName(j.name)}</p>
                   <p className="truncate text-xs text-muted">
-                    {j.lastFinishedAt ? `${fmtRelative(j.lastFinishedAt)} · ${j.lastMessage || 'done'}` : 'Not run yet'}
+                    {j.lastFinishedAt ? `${fmtRelative(j.lastFinishedAt)} · ${j.lastMessage || t('dev.overview.jobDone')}` : t('dev.overview.notRunYet')}
                   </p>
                 </div>
-                {j.lastStatus === 'error' ? <Badge tone="red">Failed</Badge> : j.lastStatus === 'ok' ? <Badge tone="green">OK</Badge> : <Badge tone="gray">Waiting</Badge>}
+                {j.lastStatus === 'error' ? (
+                  <Badge tone="red">{t('dev.overview.jobFailed')}</Badge>
+                ) : j.lastStatus === 'ok' ? (
+                  <Badge tone="green">{t('dev.overview.jobOk')}</Badge>
+                ) : (
+                  <Badge tone="gray">{t('dev.overview.jobWaiting')}</Badge>
+                )}
                 <Button size="sm" variant="ghost" icon={Play} loading={runJob.isPending && runJob.variables === j.name} onClick={() => runJob.mutate(j.name)}>
-                  Run now
+                  {t('dev.overview.runNow')}
                 </Button>
               </div>
             ))}
           </div>
         </Card>
         <Card>
-          <CardHeader title="Server" actions={<Database className="size-4 text-muted" />} />
+          <CardHeader title={t('dev.overview.server')} actions={<Database className="size-4 text-muted" />} />
           <div className="divide-y divide-line border-t border-line px-5">
-            <Kv label="Version">
-              {d.system.version} · {d.system.env}
+            <Kv label={t('dev.overview.version')}>
+              <Ltr>
+                {d.system.version} · {d.system.env}
+              </Ltr>
             </Kv>
-            <Kv label="Running for">{fmtUptime(d.system.uptimeSec)}</Kv>
-            <Kv label="Database">{fmtBytes(d.system.dbBytes)}</Kv>
-            <Kv label="Photos">{fmtBytes(d.system.selfieBytes)}</Kv>
-            <Kv label="Free disk">{d.system.diskFreeBytes === null ? '—' : fmtBytes(d.system.diskFreeBytes)}</Kv>
-            <Kv label="Memory">{fmtBytes(d.system.rssBytes)}</Kv>
-            <Kv label="Requests, 24 h">
-              {d.stats.requests24h.total.toLocaleString()} · {d.stats.requests24h.errors5xx} errors
+            <Kv label={t('dev.overview.runningFor')}>{fmtUptime(d.system.uptimeSec)}</Kv>
+            <Kv label={t('dev.overview.database')}>{fmtBytes(d.system.dbBytes)}</Kv>
+            <Kv label={t('dev.overview.photos')}>{fmtBytes(d.system.selfieBytes)}</Kv>
+            <Kv label={t('dev.overview.freeDisk')}>{d.system.diskFreeBytes === null ? '—' : fmtBytes(d.system.diskFreeBytes)}</Kv>
+            <Kv label={t('dev.overview.memory')}>{fmtBytes(d.system.rssBytes)}</Kv>
+            <Kv label={t('dev.overview.requests')}>
+              {fmtNumber(d.stats.requests24h.total)} · {t('dev.overview.serverErrors', { count: d.stats.requests24h.errors5xx })}
             </Kv>
-            <Kv label="Node.js">{d.system.node}</Kv>
+            <Kv label={t('dev.overview.node')}>
+              <Ltr>{d.system.node}</Ltr>
+            </Kv>
           </div>
         </Card>
       </div>

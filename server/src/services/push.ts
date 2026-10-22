@@ -1,12 +1,15 @@
 import webpush from 'web-push';
+import { isLocale, type Locale } from '../../../shared/i18n';
 import type { AppConfig } from '../config';
-import { getSetting, setSetting, type DB } from '../db';
+import { getSetting, parseJson, setSetting, type DB } from '../db';
+import { trMsg, type Msg } from '../i18n';
 import { nowIso } from '../lib/time';
 import { systemLog } from './logs';
 
+/** Title and body are translated for each recipient (their language, else their company's). */
 export interface PushMessage {
-  title: string;
-  body: string;
+  title: Msg;
+  body: Msg;
   /** Page to open when the notification is tapped. */
   url: string;
   /** Notifications with the same tag replace each other on the phone. */
@@ -35,6 +38,21 @@ interface SubscriptionRow {
   endpoint: string;
   p256dh: string;
   auth: string;
+  locale: string | null;
+  company_settings: string | null;
+}
+
+// Subscriptions with the recipient's language (or their company's default language).
+const SUBSCRIPTION_SELECT = `
+  SELECT ps.*, u.locale, c.settings AS company_settings
+  FROM push_subscriptions ps
+  JOIN users u ON u.id = ps.user_id
+  LEFT JOIN companies c ON c.id = u.company_id`;
+
+function recipientLocale(row: SubscriptionRow): Locale {
+  if (isLocale(row.locale)) return row.locale;
+  const companyLanguage = parseJson<{ language?: string }>(row.company_settings ?? '{}', {}).language;
+  return isLocale(companyLanguage) ? companyLanguage : 'en';
 }
 
 /** Web Push with VAPID keys generated on first start and kept in the database. */
@@ -49,9 +67,10 @@ export function createPushService(db: DB, config: AppConfig): PushService {
   const deliver = config.env !== 'test';
 
   async function send(rows: SubscriptionRow[], message: PushMessage): Promise<void> {
-    const payload = JSON.stringify(message);
     await Promise.all(
       rows.map(async (row) => {
+        const locale = recipientLocale(row);
+        const payload = JSON.stringify({ ...message, title: trMsg(message.title, locale), body: trMsg(message.body, locale) });
         try {
           await webpush.sendNotification({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, payload, {
             TTL: 15 * 60,
@@ -97,15 +116,12 @@ export function createPushService(db: DB, config: AppConfig): PushService {
       return !!db.prepare('SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1').get(userId);
     },
     notifyUser(userId, message) {
-      dispatch(db.prepare('SELECT * FROM push_subscriptions WHERE user_id = ?').all(userId) as SubscriptionRow[], message);
+      dispatch(db.prepare(`${SUBSCRIPTION_SELECT} WHERE ps.user_id = ?`).all(userId) as SubscriptionRow[], message);
     },
     notifyManagers(companyId, message) {
       dispatch(
         db
-          .prepare(
-            `SELECT ps.* FROM push_subscriptions ps JOIN users u ON u.id = ps.user_id
-             WHERE u.company_id = ? AND u.role = 'manager' AND u.active = 1`,
-          )
+          .prepare(`${SUBSCRIPTION_SELECT} WHERE u.company_id = ? AND u.role = 'manager' AND u.active = 1`)
           .all(companyId) as SubscriptionRow[],
         message,
       );

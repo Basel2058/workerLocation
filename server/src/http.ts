@@ -8,6 +8,7 @@ import type { Metrics } from './lib/metrics';
 import type { RateLimiter } from './lib/rate-limit';
 import type { Actor } from './services/logs';
 import type { PushService } from './services/push';
+import { tr } from './i18n';
 import type { JobRunner } from './jobs';
 
 export interface Ctx {
@@ -95,14 +96,18 @@ export function rateLimit(req: FastifyRequest, key: string, limit: number, windo
   const res = req.server.ctx.limiter.hit(key, limit, windowMs);
   if (!res.allowed) {
     const sec = Math.ceil(res.retryAfterMs / 1000);
-    throw tooMany(message ?? `Too many attempts. Try again in ${sec < 90 ? `${sec} seconds` : `${Math.ceil(sec / 60)} minutes`}.`, sec);
+    const wait =
+      sec < 90
+        ? tr('Too many attempts. Try again in {count} seconds.', { count: sec })
+        : tr('Too many attempts. Try again in {count} minutes.', { count: Math.ceil(sec / 60) });
+    throw tooMany(message ?? wait, sec);
   }
 }
 
 /** Parses a positive integer route/query parameter. */
 export function idParam(value: unknown, name = 'id'): number {
   const n = Number(value);
-  if (!Number.isInteger(n) || n <= 0) throw badRequest(`Invalid ${name}.`);
+  if (!Number.isInteger(n) || n <= 0) throw badRequest('Invalid request.', 'BAD_REQUEST', { field: name });
   return n;
 }
 

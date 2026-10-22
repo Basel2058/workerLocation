@@ -1,12 +1,14 @@
 import { useMutation } from '@tanstack/react-query';
 import { MessageCircle, MessageSquareText, Pencil, Phone, Radar, TriangleAlert, UserRound } from 'lucide-react';
 import { useState } from 'react';
-import { flagInfo, type LiveRow, type PresenceCheck, type Site } from '../../../../shared/types';
+import type { LiveRow, PresenceCheck, Site } from '../../../../shared/types';
 import { Dialog } from '../../components/Dialog';
 import { MiniMap } from '../../components/maps';
 import { useToast } from '../../components/Toast';
-import { Avatar, Badge, ButtonAnchor, ButtonLink, Button, Kv, Notice } from '../../components/ui';
+import { Avatar, Badge, ButtonAnchor, ButtonLink, Button, Kv, Ltr, Notice } from '../../components/ui';
 import { fmtDistance, fmtTime, smsHref, telHref, whatsappHref } from '../../lib/format';
+import { flagInfo } from '../../lib/flags';
+import { t, tRich } from '../../lib/i18n';
 import { useManager } from './context';
 import { EntryEditor, type EntryEditorTarget } from './EntryEditor';
 import { shiftLine, statusBadge, statusDetail } from './status';
@@ -14,18 +16,21 @@ import { shiftLine, statusBadge, statusDetail } from './status';
 export function presenceText(p: PresenceCheck, tz: string): { text: string; tone: 'green' | 'red' | 'amber' | 'gray' } {
   switch (p.status) {
     case 'pending':
-      return { text: `Asked at ${fmtTime(p.requestedAt, tz)} — waiting for answer`, tone: 'amber' };
+      return { text: t('manager.person.presence.pending', { time: fmtTime(p.requestedAt, tz) }), tone: 'amber' };
     case 'passed':
-      return { text: `Confirmed at work at ${fmtTime(p.respondedAt, tz)}`, tone: 'green' };
+      return { text: t('manager.person.presence.passed', { time: fmtTime(p.respondedAt, tz) }), tone: 'green' };
     case 'failed':
       return {
-        text: `Not at work at ${fmtTime(p.respondedAt, tz)}${p.distanceM !== null ? ` (${fmtDistance(p.distanceM)} away)` : ''}`,
+        text:
+          p.distanceM !== null
+            ? t('manager.person.presence.failedAway', { time: fmtTime(p.respondedAt, tz), distance: fmtDistance(p.distanceM) })
+            : t('manager.person.presence.failed', { time: fmtTime(p.respondedAt, tz) }),
         tone: 'red',
       };
     case 'expired':
-      return { text: `Did not answer (asked ${fmtTime(p.requestedAt, tz)})`, tone: 'red' };
+      return { text: t('manager.person.presence.expired', { time: fmtTime(p.requestedAt, tz) }), tone: 'red' };
     default:
-      return { text: 'Cancelled', tone: 'gray' };
+      return { text: t('manager.person.presence.cancelled'), tone: 'gray' };
   }
 }
 
@@ -50,7 +55,7 @@ export function PersonSheet({
   const askPresence = useMutation({
     mutationFn: (workerId: number) => m.post('/api/m/presence', { workerId }),
     onSuccess: () => {
-      toast.success('Asked to confirm. They have 15 minutes.');
+      toast.success(t('manager.person.presenceAsked'));
       onChanged();
     },
     onError: (err) => toast.error(err),
@@ -72,7 +77,7 @@ export function PersonSheet({
                   <Badge tone={badge.tone} dot>
                     {badge.text}
                   </Badge>
-                  {row.needsReview && <Badge tone="violet">Needs your check</Badge>}
+                  {row.needsReview && <Badge tone="violet">{t('manager.person.needsCheck')}</Badge>}
                 </div>
               </div>
             </div>
@@ -80,26 +85,39 @@ export function PersonSheet({
             {row.worker.phone ? (
               <div className="mt-5 grid grid-cols-[1fr_auto_auto] gap-2">
                 <ButtonAnchor href={telHref(row.worker.phone)} variant="success" size="lg" icon={Phone}>
-                  Call {row.worker.phone}
+                  {tRich('manager.shared.callPhone', { phone: <Ltr>{row.worker.phone}</Ltr> })}
                 </ButtonAnchor>
                 <ButtonAnchor href={whatsappHref(row.worker.phone)} target="_blank" rel="noreferrer" variant="secondary" size="lg" icon={MessageCircle} aria-label="WhatsApp" className="px-3.5" />
-                <ButtonAnchor href={smsHref(row.worker.phone)} variant="secondary" size="lg" icon={MessageSquareText} aria-label="Text message" className="px-3.5" />
+                <ButtonAnchor href={smsHref(row.worker.phone)} variant="secondary" size="lg" icon={MessageSquareText} aria-label={t('manager.person.textMessage')} className="px-3.5" />
               </div>
             ) : (
               <Notice tone="gray" className="mt-5">
-                No phone number saved for this person.
+                {t('manager.person.noPhone')}
               </Notice>
             )}
 
             <div className="mt-5 divide-y divide-line rounded-2xl bg-surface-2/60 px-4">
-              <Kv label="Shift">{shiftLine(row, tz)}</Kv>
-              <Kv label="Status">{statusDetail(row, tz)}</Kv>
-              {row.entry && <Kv label="Checked in">{`${fmtTime(row.entry.clockInAt, tz)}${row.entry.siteName ? ` · ${row.entry.siteName}` : ''}`}</Kv>}
-              {row.entry?.clockOutAt && <Kv label="Checked out">{fmtTime(row.entry.clockOutAt, tz)}</Kv>}
+              <Kv label={t('manager.person.shift')}>{shiftLine(row, tz)}</Kv>
+              <Kv label={t('manager.person.status')}>{statusDetail(row, tz)}</Kv>
+              {row.entry && (
+                <Kv label={t('manager.shared.checkedIn')}>
+                  {[fmtTime(row.entry.clockInAt, tz), row.entry.siteName].filter(Boolean).join(t('common.separator'))}
+                </Kv>
+              )}
+              {row.entry?.clockOutAt && <Kv label={t('manager.shared.checkedOut')}>{fmtTime(row.entry.clockOutAt, tz)}</Kv>}
               {row.location && (
-                <Kv label="Location">
-                  {row.location.kind === 'check' ? 'Confirmed' : row.location.kind === 'out' ? 'At check-out' : 'At check-in'} {fmtTime(row.location.at, tz)}
-                  {row.location.accuracy ? ` · ±${row.location.accuracy} m` : ''}
+                <Kv label={t('manager.person.location')}>
+                  {t(
+                    row.location.kind === 'check'
+                      ? 'manager.person.locationCheck'
+                      : row.location.kind === 'out'
+                        ? 'manager.person.locationOut'
+                        : 'manager.person.locationIn',
+                    { time: fmtTime(row.location.at, tz) },
+                  )}
+                  {row.location.accuracy
+                    ? `${t('common.separator')}${t('manager.person.accuracy', { distance: fmtDistance(row.location.accuracy) })}`
+                    : ''}
                 </Kv>
               )}
             </div>
@@ -132,8 +150,8 @@ export function PersonSheet({
                   <div />
                 )}
                 {row.selfieId && (
-                  <button onClick={() => setPhotoOpen(true)} className="overflow-hidden rounded-xl ring-1 ring-line" aria-label="Show photo">
-                    <img src={`/api/selfies/${row.selfieId}`} alt={`Photo of ${row.worker.name}`} className="h-40 w-32 object-cover" loading="lazy" />
+                  <button onClick={() => setPhotoOpen(true)} className="overflow-hidden rounded-xl ring-1 ring-line" aria-label={t('manager.person.showPhoto')}>
+                    <img src={`/api/selfies/${row.selfieId}`} alt={t('manager.shared.photoOf', { name: row.worker.name })} className="h-40 w-32 object-cover" loading="lazy" />
                   </button>
                 )}
               </div>
@@ -142,7 +160,7 @@ export function PersonSheet({
             <div className="mt-5 flex flex-wrap gap-2">
               {row.status === 'on_site' && row.presence?.status !== 'pending' && (
                 <Button icon={Radar} loading={askPresence.isPending} onClick={() => askPresence.mutate(row.worker.id)}>
-                  Ask to confirm location
+                  {t('manager.shared.askPresence')}
                 </Button>
               )}
               <Button
@@ -160,10 +178,10 @@ export function PersonSheet({
                   )
                 }
               >
-                {row.entry ? 'Fix attendance' : 'Add attendance'}
+                {row.entry ? t('manager.person.fixAttendance') : t('manager.shared.addAttendance')}
               </Button>
               <ButtonLink to={`${m.base}/team/${row.worker.id}`} variant="ghost" icon={UserRound}>
-                Profile
+                {t('manager.person.profile')}
               </ButtonLink>
             </div>
           </div>
@@ -171,7 +189,7 @@ export function PersonSheet({
       </Dialog>
 
       <Dialog open={photoOpen && !!row?.selfieId} onClose={() => setPhotoOpen(false)} title={row?.worker.name} size="sm">
-        {row?.selfieId && <img src={`/api/selfies/${row.selfieId}`} alt={`Photo of ${row.worker.name}`} className="w-full rounded-xl" />}
+        {row?.selfieId && <img src={`/api/selfies/${row.selfieId}`} alt={t('manager.shared.photoOf', { name: row.worker.name })} className="w-full rounded-xl" />}
       </Dialog>
 
       <EntryEditor

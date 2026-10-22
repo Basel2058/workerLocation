@@ -1,11 +1,13 @@
 import { KeyRound, LogOut, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useState } from 'react';
 import { Dialog } from '../components/Dialog';
+import { LanguageSelect } from '../components/LanguagePicker';
 import { NotificationsSwitch } from '../components/Notifications';
 import { useToast } from '../components/Toast';
-import { Avatar, Badge, Button, Card, CardHeader, Field, Input, Kv, PageHeader } from '../components/ui';
+import { Avatar, Badge, Button, Card, CardHeader, Field, Input, Kv, Ltr, PageHeader } from '../components/ui';
 import { errorMessage, post } from '../lib/api';
 import { useAuth, useUser } from '../lib/auth';
+import { t, tRich } from '../lib/i18n';
 import { ChangePasswordForm, PasswordInput } from './Auth';
 
 interface TotpSetup {
@@ -45,7 +47,7 @@ export function AccountPage() {
     try {
       await post('/api/auth/totp/enable', { code });
       setSetup(null);
-      toast.success('Two-step sign-in is on');
+      toast.success(t('dev.account.twoStepOnToast'));
       await refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -60,7 +62,7 @@ export function AccountPage() {
       await post('/api/auth/totp/disable', { password });
       setDisableOpen(false);
       setPassword('');
-      toast.success('Two-step sign-in is off');
+      toast.success(t('dev.account.twoStepOffToast'));
       await refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -71,46 +73,47 @@ export function AccountPage() {
 
   return (
     <div className="animate-fade-up mx-auto max-w-2xl">
-      <PageHeader title="Account" />
+      <PageHeader title={t('dev.account.title')} />
       <div className="space-y-5">
         <Card className="flex items-center gap-4 p-5">
           <Avatar name={user.fullName} size={56} />
           <div className="min-w-0">
             <p className="truncate text-lg font-semibold">{user.fullName}</p>
             <p className="truncate text-sm text-muted">
-              @{user.username} · {user.role === 'developer' ? 'App owner' : `Manager at ${user.companyName}`}
+              <Ltr>@{user.username}</Ltr> ·{' '}
+              {user.role === 'developer' ? t('dev.account.appOwner') : t('dev.account.managerAt', { company: user.companyName })}
             </p>
           </div>
         </Card>
 
         <Card>
-          <CardHeader title="Sign-in" />
+          <CardHeader title={t('dev.account.signIn')} />
           <div className="divide-y divide-line border-t border-line px-5">
-            <Kv label="Password">
+            <Kv label={t('dev.account.password')}>
               <Button size="sm" icon={KeyRound} onClick={() => setPwOpen(true)}>
-                Change
+                {t('dev.account.change')}
               </Button>
             </Kv>
             <Kv
               label={
                 <span>
-                  Two-step sign-in
-                  <span className="block text-xs text-faint">A code from an authenticator app after your password.</span>
+                  {t('dev.account.twoStep')}
+                  <span className="block text-xs text-faint">{t('dev.account.twoStepHint')}</span>
                 </span>
               }
             >
               {user.totpEnabled ? (
                 <span className="flex items-center gap-2">
                   <Badge tone="green" dot>
-                    On
+                    {t('common.on')}
                   </Badge>
                   <Button size="sm" variant="ghost" icon={ShieldOff} onClick={() => setDisableOpen(true)}>
-                    Turn off
+                    {t('dev.account.turnOff')}
                   </Button>
                 </span>
               ) : (
                 <Button size="sm" variant="brand" icon={ShieldCheck} loading={busy && !setup} onClick={() => void startSetup()}>
-                  Turn on
+                  {t('dev.account.turnOn')}
                 </Button>
               )}
             </Kv>
@@ -118,25 +121,27 @@ export function AccountPage() {
         </Card>
 
         <Card className="p-5">
+          <Field label={t('ui.language.label')} hint={t('ui.language.hint')}>
+            <LanguageSelect />
+          </Field>
+        </Card>
+
+        <Card className="p-5">
           <NotificationsSwitch
-            description={
-              user.role === 'developer'
-                ? 'Notifications on this device.'
-                : 'Get a notification for new phones, check-ins to confirm, failed presence checks and warnings.'
-            }
+            description={user.role === 'developer' ? t('dev.account.notificationsOwner') : t('dev.account.notificationsManager')}
           />
         </Card>
 
         <Button block size="lg" variant="dangerSoft" icon={LogOut} onClick={() => void logout()}>
-          Sign out
+          {t('dev.account.signOut')}
         </Button>
       </div>
 
-      <Dialog open={pwOpen} onClose={() => setPwOpen(false)} title="Change password">
+      <Dialog open={pwOpen} onClose={() => setPwOpen(false)} title={t('dev.account.changePassword')}>
         <ChangePasswordForm
           onDone={() => {
             setPwOpen(false);
-            toast.success('Password changed. Other devices were signed out.');
+            toast.success(t('dev.account.passwordChanged'));
           }}
         />
       </Dialog>
@@ -144,32 +149,31 @@ export function AccountPage() {
       <Dialog
         open={!!setup}
         onClose={() => setSetup(null)}
-        title="Turn on two-step sign-in"
+        title={t('dev.account.enableTitle')}
         footer={
           <>
             <Button variant="ghost" onClick={() => setSetup(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="brand" loading={busy} disabled={code.length !== 6} onClick={() => void enable()}>
-              Turn on
+              {t('dev.account.turnOn')}
             </Button>
           </>
         }
       >
         {setup && (
           <div className="space-y-4 text-sm">
-            <p className="text-ink-2">
-              1. Open an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password…) and scan this code.
-            </p>
+            <p className="text-ink-2">{t('dev.account.step1')}</p>
             <div className="mx-auto w-48 rounded-2xl bg-white p-3 ring-1 ring-line">
-              <img src={`data:image/svg+xml;utf8,${encodeURIComponent(setup.qrSvg)}`} alt="QR code for your authenticator app" className="w-full" />
+              <img src={`data:image/svg+xml;utf8,${encodeURIComponent(setup.qrSvg)}`} alt={t('dev.account.qrAlt')} className="w-full" />
             </div>
             <p className="text-center text-xs text-muted">
-              Can’t scan? Enter this key: <span className="font-mono font-semibold break-all text-ink">{setup.secret}</span>
+              {tRich('dev.account.manualKey', { key: <Ltr className="font-mono font-semibold break-all text-ink">{setup.secret}</Ltr> })}
             </p>
-            <Field label="2. Enter the 6-digit code from the app" error={error}>
+            <Field label={t('dev.account.step2')} error={error}>
               <Input
                 inputMode="numeric"
+                dir="ltr"
                 autoComplete="one-time-code"
                 maxLength={6}
                 value={code}
@@ -184,20 +188,20 @@ export function AccountPage() {
       <Dialog
         open={disableOpen}
         onClose={() => setDisableOpen(false)}
-        title="Turn off two-step sign-in?"
+        title={t('dev.account.disableTitle')}
         size="sm"
         footer={
           <>
             <Button variant="ghost" onClick={() => setDisableOpen(false)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="danger" loading={busy} disabled={!password} onClick={() => void disable()}>
-              Turn off
+              {t('dev.account.turnOff')}
             </Button>
           </>
         }
       >
-        <Field label="Your password" error={error}>
+        <Field label={t('dev.account.yourPassword')} error={error}>
           <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
         </Field>
       </Dialog>

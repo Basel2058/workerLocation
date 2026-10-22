@@ -17,6 +17,7 @@ import {
 import { Link, type LinkProps } from 'react-router';
 import { extendTailwindMerge } from 'tailwind-merge';
 import { initials } from '../lib/format';
+import { t } from '../lib/i18n';
 
 const twMerge = extendTailwindMerge({ extend: { theme: { shadow: ['card', 'pop'] } } });
 
@@ -295,7 +296,7 @@ export function Avatar({
       {initials(name)}
       {ring && (
         <span
-          className={cx('absolute -right-0.5 -bottom-0.5 rounded-full ring-2 ring-surface', toneDot[ring])}
+          className={cx('absolute -end-0.5 -bottom-0.5 rounded-full ring-2 ring-surface', toneDot[ring])}
           style={{ width: Math.max(10, size * 0.28), height: Math.max(10, size * 0.28) }}
         />
       )}
@@ -303,8 +304,8 @@ export function Avatar({
   );
 }
 
-export function Spinner({ className, label = 'Loading' }: { className?: string; label?: string }) {
-  return <LoaderCircle role="status" aria-label={label} className={cx('size-5 animate-spin text-muted', className)} />;
+export function Spinner({ className, label }: { className?: string; label?: string }) {
+  return <LoaderCircle role="status" aria-label={label ?? t('common.loading')} className={cx('size-5 animate-spin text-muted', className)} />;
 }
 
 export function PageLoader() {
@@ -347,13 +348,13 @@ export function EmptyState({
 }
 
 export function ErrorBox({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const message = error instanceof Error ? error.message : 'Something went wrong.';
+  const message = error instanceof Error ? error.message : t('common.somethingWrong');
   return (
     <div className="rounded-2xl bg-rose-500/8 p-4 text-sm text-rose-800 ring-1 ring-rose-500/20 dark:text-rose-200" role="alert">
       <p>{message}</p>
       {onRetry && (
         <Button size="sm" variant="secondary" className="mt-3" onClick={onRetry}>
-          Try again
+          {t('common.tryAgain')}
         </Button>
       )}
     </div>
@@ -429,7 +430,7 @@ export function Field({
       {label && (
         <label htmlFor={targetId} className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px] font-medium text-ink-2">
           <span>{label}</span>
-          {optional && <span className="text-xs font-normal text-faint">Optional</span>}
+          {optional && <span className="text-xs font-normal text-faint">{t('common.optional')}</span>}
         </label>
       )}
       {control}
@@ -469,7 +470,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
       ref={ref}
       className={cx(
         fieldBase,
-        "h-11 appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2398a2b3%22 stroke-width=%222%22><path d=%22m6 9 6 6 6-6%22/></svg>')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat pr-9 sm:h-10",
+        "h-11 appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2216%22 height=%2216%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2398a2b3%22 stroke-width=%222%22><path d=%22m6 9 6 6 6-6%22/></svg>')] bg-[length:16px] bg-[right_12px_center] bg-no-repeat pe-9 rtl:bg-[left_12px_center] sm:h-10",
         className,
       )}
       {...rest}
@@ -515,8 +516,8 @@ export function Switch({
       >
         <span
           className={cx(
-            'absolute top-0.5 size-5 rounded-full bg-white shadow transition-transform',
-            checked ? 'translate-x-[22px]' : 'translate-x-0.5',
+            'absolute start-0 top-0.5 size-5 rounded-full bg-white shadow transition-transform',
+            checked ? 'translate-x-[22px] rtl:-translate-x-[22px]' : 'translate-x-0.5 rtl:-translate-x-0.5',
           )}
         />
       </button>
@@ -587,7 +588,7 @@ export function Stat({
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cx(
-        'w-full rounded-2xl bg-surface p-4 text-left ring-1 shadow-card transition-all',
+        'w-full rounded-2xl bg-surface p-4 text-start ring-1 shadow-card transition-all',
         active ? 'ring-2 ring-brand' : 'ring-line',
         onClick && 'hover:ring-line-strong active:scale-[0.99]',
       )}
@@ -607,7 +608,7 @@ export function Kv({ label, children }: { label: ReactNode; children: ReactNode 
   return (
     <div className="flex items-start justify-between gap-4 py-2.5 text-sm">
       <span className="shrink-0 text-muted">{label}</span>
-      <span className="min-w-0 text-right text-ink">{children}</span>
+      <span className="min-w-0 text-end text-ink">{children}</span>
     </div>
   );
 }
@@ -618,5 +619,14 @@ export function SectionTitle({ children, action }: { children: ReactNode; action
       <h2 className="text-[13px] font-semibold tracking-wide text-muted uppercase">{children}</h2>
       {action}
     </div>
+  );
+}
+
+/** Text that always reads left-to-right inside any language: phone numbers, usernames, codes, IP addresses. */
+export function Ltr({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <bdi dir="ltr" className={className}>
+      {children}
+    </bdi>
   );
 }

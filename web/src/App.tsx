@@ -2,10 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
 import { ConfirmProvider } from './components/Dialog';
+import { LocaleSync } from './components/LanguagePicker';
 import { ToastProvider } from './components/Toast';
 import { PageLoader } from './components/ui';
 import { ApiError } from './lib/api';
 import { AuthProvider, useAuth, usePublicConfig } from './lib/auth';
+import { I18nProvider, LocaleBoundary, type Locale } from './lib/i18n';
 import { CodePage, ForcePasswordChangePage, LoginPage, Splash } from './pages/Auth';
 import { WorkerApp } from './pages/worker/WorkerApp';
 
@@ -62,18 +64,23 @@ function Root() {
   );
 }
 
-export function App() {
+export function App({ initialLocale }: { initialLocale: Locale }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        <ConfirmProvider>
-          <AuthProvider>
-            <BrowserRouter>
-              <Root />
-            </BrowserRouter>
-          </AuthProvider>
-        </ConfirmProvider>
-      </ToastProvider>
-    </QueryClientProvider>
+    <I18nProvider initial={initialLocale}>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>
+          <ConfirmProvider>
+            <AuthProvider>
+              <LocaleSync />
+              <LocaleBoundary>
+                <BrowserRouter>
+                  <Root />
+                </BrowserRouter>
+              </LocaleBoundary>
+            </AuthProvider>
+          </ConfirmProvider>
+        </ToastProvider>
+      </QueryClientProvider>
+    </I18nProvider>
   );
 }

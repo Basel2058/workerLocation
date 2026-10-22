@@ -4,11 +4,13 @@ import cookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
+import { isLocale, parseAcceptLanguage } from '../../shared/i18n';
 import { loadSession, SESSION_COOKIE, touchSession } from './auth/sessions';
 import type { AppConfig } from './config';
 import { openDatabase, type DB } from './db';
 import type { CompanyRow } from './db/rows';
 import { sendError, type Ctx } from './http';
+import { dictionary, preferAccountLocale, runWithLocale, tr } from './i18n';
 import { JobRunner } from './jobs';
 import { AppError } from './lib/errors';
 import { Metrics } from './lib/metrics';
@@ -79,6 +81,13 @@ export async function buildApp(config: AppConfig, opts: { db?: DB } = {}): Promi
     "frame-ancestors 'none'",
   ].join('; ');
 
+  // Every request runs in a language: the one the app shows (x-lang), else the account's, else the browser's.
+  app.addHook('onRequest', (req, _reply, done) => {
+    const header = req.headers['x-lang'];
+    const explicit = isLocale(header);
+    runWithLocale(explicit ? header : (parseAcceptLanguage(req.headers['accept-language']) ?? 'en'), explicit, done);
+  });
+
   app.addHook('onRequest', async (req, reply) => {
     reply.header('content-security-policy', csp);
     reply.header('x-content-type-options', 'nosniff');
@@ -111,6 +120,7 @@ export async function buildApp(config: AppConfig, opts: { db?: DB } = {}): Promi
           ? ((db.prepare('SELECT * FROM companies WHERE id = ?').get(loaded.user.company_id) as CompanyRow | undefined) ?? null)
           : null;
         req.auth = { session: loaded.session, user: loaded.user, company };
+        preferAccountLocale(loaded.user.locale);
         touchSession(db, loaded.session, loaded.user, req.ip);
       }
     }
@@ -123,15 +133,20 @@ export async function buildApp(config: AppConfig, opts: { db?: DB } = {}): Promi
   app.setErrorHandler((err: FastifyError | Error, req, reply) => {
     if (err instanceof AppError) return sendError(reply, err);
     if (err instanceof ZodError) {
+      // Our own rule messages ("Enter a valid phone number.") are translated; Zod's built-in ones name the field.
       const first = err.issues[0];
-      const field = first?.path.join('.');
-      const message = first ? (field ? `${field}: ${first.message}` : first.message) : 'Invalid request.';
-      return sendError(reply, new AppError(400, 'VALIDATION', message, { issues: err.issues.slice(0, 10) }));
+      const field = first?.path.join('.') ?? '';
+      const message = !first
+        ? 'Invalid request.'
+        : first.message in dictionary('ar')
+          ? first.message
+          : tr('This field is not valid: {field}.', { field: field || '?' });
+      return sendError(reply, new AppError(400, 'VALIDATION', message, { field, issues: err.issues.slice(0, 10) }));
     }
     const status = (err as FastifyError).statusCode;
     if (status && status >= 400 && status < 500) {
-      const message = status === 413 ? 'The upload is too large.' : err.message;
-      return sendError(reply, new AppError(status, (err as FastifyError).code ?? 'BAD_REQUEST', message));
+      const message = status === 413 ? 'The upload is too large.' : 'Invalid request.';
+      return sendError(reply, new AppError(status, (err as FastifyError).code ?? 'BAD_REQUEST', message, { reason: err.message }));
     }
     req.log.error(err);
     systemLog(db, 'error', 'server', err.message, {

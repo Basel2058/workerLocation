@@ -3,7 +3,7 @@ import { distanceMeters } from '../../shared/geo';
 import { currentStep, totpCode, verifyTotp, base32Decode, base32Encode } from '../src/auth/totp';
 import { ipMatches, isValidNetwork } from '../src/lib/ip';
 import { RateLimiter } from '../src/lib/rate-limit';
-import { dayRange, localDateTimeToUtc, localTime, zonedToUtc } from '../src/lib/time';
+import { dayRange, localDateTimeToUtc, localTime, weekStart, zonedToUtc } from '../src/lib/time';
 import { shiftRange } from '../src/services/shifts';
 import { deviceLabel } from '../src/services/devices';
 
@@ -30,6 +30,16 @@ describe('time zones', () => {
   it('parses datetime-local values', () => {
     expect(localDateTimeToUtc('2026-10-22T09:30', 'Asia/Amman')).toBe('2026-10-22T06:30:00.000Z');
     expect(localDateTimeToUtc('nonsense', 'Asia/Amman')).toBeNull();
+  });
+
+  it('starts the week on the company’s first day', () => {
+    // 2026-10-22 is a Thursday.
+    expect(weekStart('2026-10-22')).toBe('2026-10-19');
+    expect(weekStart('2026-10-22', 0)).toBe('2026-10-18');
+    expect(weekStart('2026-10-22', 6)).toBe('2026-10-17');
+    expect(weekStart('2026-10-18', 0)).toBe('2026-10-18');
+    expect(weekStart('2026-10-18', 1)).toBe('2026-10-12');
+    expect(weekStart('2026-10-24', 6)).toBe('2026-10-24');
   });
 });
 

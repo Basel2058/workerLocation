@@ -1,9 +1,11 @@
 import { Eye, EyeOff, KeyRound, LogOut, ShieldCheck } from 'lucide-react';
 import { useState, type ComponentProps, type FormEvent, type ReactNode } from 'react';
+import { LanguageButton } from '../components/LanguagePicker';
 import { LogoMark } from '../components/Logo';
 import { Button, Field, Input } from '../components/ui';
 import { errorMessage, post } from '../lib/api';
 import { useAuth, usePublicConfig } from '../lib/auth';
+import { t } from '../lib/i18n';
 
 function AuthLayout({ children, title, subtitle }: { children: ReactNode; title: string; subtitle: ReactNode }) {
   const config = usePublicConfig();
@@ -13,6 +15,7 @@ function AuthLayout({ children, title, subtitle }: { children: ReactNode; title:
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60rem_30rem_at_50%_-10%,color-mix(in_oklab,var(--color-brand)_14%,transparent),transparent)]"
       />
+      <LanguageButton className="safe-top absolute end-4 top-4" />
       <div className="animate-fade-up w-full max-w-[380px]">
         <div className="mb-8 flex flex-col items-center text-center">
           <LogoMark size={52} className="drop-shadow-sm" />
@@ -30,12 +33,13 @@ export function PasswordInput(props: ComponentProps<typeof Input>) {
   const [show, setShow] = useState(false);
   return (
     <div className="relative">
-      <Input {...props} type={show ? 'text' : 'password'} className="pr-11" />
+      {/* Passwords are typed left-to-right; physical padding keeps room for the eye button on either side. */}
+      <Input dir="ltr" {...props} type={show ? 'text' : 'password'} className="pr-11 rtl:pr-3.5 rtl:pl-11 rtl:text-right" />
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
-        className="absolute inset-y-0 right-0 grid w-11 place-items-center text-faint hover:text-ink"
-        aria-label={show ? 'Hide password' : 'Show password'}
+        className="absolute inset-y-0 end-0 grid w-11 place-items-center text-faint hover:text-ink"
+        aria-label={show ? t('ui.password.hide') : t('ui.password.show')}
       >
         {show ? <EyeOff className="size-[18px]" /> : <Eye className="size-[18px]" />}
       </button>
@@ -63,12 +67,14 @@ export function LoginPage() {
   };
 
   return (
-    <AuthLayout title="Sign in" subtitle="Use the username and password you were given.">
+    <AuthLayout title={t('auth.signIn.title')} subtitle={t('auth.signIn.subtitle')}>
       <form onSubmit={submit} className="space-y-4" noValidate>
-        <Field label="Username" htmlFor="username">
+        <Field label={t('auth.signIn.username')} htmlFor="username">
           <Input
             id="username"
             name="username"
+            dir="ltr"
+            className="rtl:text-right"
             autoComplete="username"
             autoCapitalize="none"
             autoCorrect="off"
@@ -79,7 +85,7 @@ export function LoginPage() {
             autoFocus
           />
         </Field>
-        <Field label="Password" htmlFor="password">
+        <Field label={t('auth.signIn.password')} htmlFor="password">
           <PasswordInput
             id="password"
             name="password"
@@ -95,10 +101,10 @@ export function LoginPage() {
           </p>
         )}
         <Button type="submit" variant="brand" size="lg" block loading={busy} disabled={!username || !password}>
-          Sign in
+          {t('auth.signIn.submit')}
         </Button>
       </form>
-      <p className="mt-8 text-center text-[13px] text-faint">Forgot your password? Ask your manager to reset it.</p>
+      <p className="mt-8 text-center text-[13px] text-faint">{t('auth.signIn.forgot')}</p>
     </AuthLayout>
   );
 }
@@ -120,10 +126,11 @@ export function CodePage() {
     }
   };
   return (
-    <AuthLayout title="Two-step sign-in" subtitle="Enter the 6-digit code from your authenticator app.">
+    <AuthLayout title={t('auth.code.title')} subtitle={t('auth.code.subtitle')}>
       <form onSubmit={submit} className="space-y-4">
         <Input
           inputMode="numeric"
+          dir="ltr"
           autoComplete="one-time-code"
           pattern="[0-9 ]*"
           maxLength={7}
@@ -132,7 +139,7 @@ export function CodePage() {
           value={code}
           onChange={(e) => setCode(e.target.value.replace(/[^\d]/g, '').slice(0, 6))}
           autoFocus
-          aria-label="Verification code"
+          aria-label={t('auth.code.label')}
         />
         {error && (
           <p role="alert" className="text-center text-sm text-rose-600 dark:text-rose-400">
@@ -140,10 +147,10 @@ export function CodePage() {
           </p>
         )}
         <Button type="submit" variant="brand" size="lg" block icon={ShieldCheck} loading={busy} disabled={code.length !== 6}>
-          Verify
+          {t('auth.code.verify')}
         </Button>
         <Button variant="ghost" block icon={LogOut} onClick={() => void logout()}>
-          Use another account
+          {t('auth.code.otherAccount')}
         </Button>
       </form>
     </AuthLayout>
@@ -151,7 +158,7 @@ export function CodePage() {
 }
 
 /** Password change form, used when a temporary password must be replaced and from account settings. */
-export function ChangePasswordForm({ onDone, submitLabel = 'Save new password' }: { onDone: () => void; submitLabel?: string }) {
+export function ChangePasswordForm({ onDone, submitLabel }: { onDone: () => void; submitLabel?: string }) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [repeat, setRepeat] = useState('');
@@ -174,13 +181,13 @@ export function ChangePasswordForm({ onDone, submitLabel = 'Save new password' }
   };
   return (
     <form onSubmit={submit} className="space-y-4">
-      <Field label="Current password" htmlFor="pw-current">
+      <Field label={t('auth.changePassword.current')} htmlFor="pw-current">
         <PasswordInput id="pw-current" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
       </Field>
-      <Field label="New password" htmlFor="pw-new" hint="At least 8 characters. A short sentence is easy to remember.">
+      <Field label={t('auth.changePassword.new')} htmlFor="pw-new" hint={t('auth.changePassword.newHint')}>
         <PasswordInput id="pw-new" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
       </Field>
-      <Field label="Repeat new password" htmlFor="pw-repeat" error={mismatch ? 'The passwords do not match.' : null}>
+      <Field label={t('auth.changePassword.repeat')} htmlFor="pw-repeat" error={mismatch ? t('auth.changePassword.mismatch') : null}>
         <PasswordInput id="pw-repeat" autoComplete="new-password" value={repeat} onChange={(e) => setRepeat(e.target.value)} />
       </Field>
       {error && (
@@ -197,7 +204,7 @@ export function ChangePasswordForm({ onDone, submitLabel = 'Save new password' }
         loading={busy}
         disabled={!current || next.length < 8 || next !== repeat}
       >
-        {submitLabel}
+        {submitLabel ?? t('auth.changePassword.submit')}
       </Button>
     </form>
   );
@@ -206,10 +213,10 @@ export function ChangePasswordForm({ onDone, submitLabel = 'Save new password' }
 export function ForcePasswordChangePage() {
   const { refresh, logout } = useAuth();
   return (
-    <AuthLayout title="Choose your password" subtitle="Replace the temporary password with one only you know.">
-      <ChangePasswordForm onDone={() => void refresh()} submitLabel="Save and continue" />
+    <AuthLayout title={t('auth.forceChange.title')} subtitle={t('auth.forceChange.subtitle')}>
+      <ChangePasswordForm onDone={() => void refresh()} submitLabel={t('auth.forceChange.submit')} />
       <Button variant="ghost" block className="mt-3" onClick={() => void logout()}>
-        Sign out
+        {t('auth.forceChange.signOut')}
       </Button>
     </AuthLayout>
   );

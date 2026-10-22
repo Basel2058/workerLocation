@@ -1,6 +1,6 @@
 // Raw row shapes as stored in SQLite (snake_case, integers for booleans).
 
-import type { Role } from '../../../shared/types';
+import type { Locale, Role } from '../../../shared/types';
 
 export interface CompanyRow {
   id: number;
@@ -50,6 +50,7 @@ export interface UserRow {
   last_seen_at: string | null;
   created_at: string;
   updated_at: string;
+  locale: Locale | null;
 }
 
 export interface SessionRow {
@@ -189,6 +190,7 @@ export interface SecurityEventRow {
   kind: string;
   severity: 'info' | 'warn' | 'high';
   message: string;
+  message_i18n: string | null;
   details: string;
   ip: string;
   resolved_by: number | null;

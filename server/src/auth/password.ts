@@ -1,4 +1,5 @@
 import { randomBytes, scrypt, timingSafeEqual, type ScryptOptions } from 'node:crypto';
+import { tr } from '../i18n';
 
 // OWASP-recommended scrypt parameters (N=2^15, r=8, p=3). Tests use a cheaper cost.
 const COST = process.env.ONSITE_FAST_HASH === '1' ? { N: 2 ** 10, r: 8, p: 1 } : { N: 2 ** 15, r: 8, p: 3 };
@@ -44,10 +45,10 @@ const COMMON = new Set([
 
 /** Returns a problem description, or null when the password is acceptable. */
 export function passwordProblem(password: string, username: string): string | null {
-  if (password.length < 8) return 'Use at least 8 characters.';
-  if (password.length > 200) return 'Use at most 200 characters.';
-  if (COMMON.has(password.toLowerCase())) return 'This password is too common.';
-  if (password.toLowerCase() === username.toLowerCase()) return 'The password cannot be the same as the username.';
-  if (/^(.)\1+$/.test(password)) return 'Do not repeat a single character.';
+  if (password.length < 8) return tr('Use at least 8 characters.');
+  if (password.length > 200) return tr('Use at most 200 characters.');
+  if (COMMON.has(password.toLowerCase())) return tr('This password is too common.');
+  if (password.toLowerCase() === username.toLowerCase()) return tr('The password cannot be the same as the username.');
+  if (/^(.)\1+$/.test(password)) return tr('Do not repeat a single character.');
   return null;
 }

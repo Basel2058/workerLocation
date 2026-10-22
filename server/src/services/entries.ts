@@ -1,8 +1,9 @@
 import type { PunchSummary, TimeEntry } from '../../../shared/types';
 import { parseJson, type DB } from '../db';
 import type { CompanyRow, EntryRow, PunchRow, ShiftRow } from '../db/rows';
+import { msg, tr } from '../i18n';
 import { badRequest, conflict, notFound } from '../lib/errors';
-import { addMinutes, formatLocal, minutesBetween, nowIso } from '../lib/time';
+import { addMinutes, minutesBetween, nowIso } from '../lib/time';
 import { companySettings, getSite } from './companies';
 import { audit, type Actor } from './logs';
 import { findShiftForCheckIn } from './shifts';
@@ -245,7 +246,7 @@ export function createManualEntry(db: DB, actor: Actor, company: CompanyRow, inp
   if (input.clockOutAt && input.clockOutAt < input.clockInAt) throw badRequest('Check-out must be after check-in.');
   assertNotFuture(input.clockInAt);
   if (input.clockOutAt) assertNotFuture(input.clockOutAt);
-  if (!input.clockOutAt && openEntry(db, worker.id)) throw conflict(`${worker.full_name} is already checked in.`, 'ALREADY_IN');
+  if (!input.clockOutAt && openEntry(db, worker.id)) throw conflict(tr('{name} is already checked in.', { name: worker.full_name }), 'ALREADY_IN');
   assertNoOverlap(db, worker.id, input.clockInAt, input.clockOutAt);
   const settings = companySettings(company);
   const shift = matchShift(db, worker.id, input.clockInAt, settings.earlyCheckInMin);
@@ -277,7 +278,16 @@ export function createManualEntry(db: DB, actor: Actor, company: CompanyRow, inp
       companyId: company.id,
       entity: 'time_entry',
       entityId: newId,
-      summary: `Added attendance for ${worker.full_name}: ${formatLocal(input.clockInAt, company.timezone)}${input.clockOutAt ? ` – ${formatLocal(input.clockOutAt, company.timezone, 'HH:mm')}` : ' (checked in)'}`,
+      summary: input.clockOutAt
+        ? msg('Added attendance for {name}: {from} – {to}', {
+            name: worker.full_name,
+            from: { at: input.clockInAt, tz: company.timezone },
+            to: { at: input.clockOutAt, tz: company.timezone, style: 'time' },
+          })
+        : msg('Added attendance for {name}: {from} (checked in)', {
+            name: worker.full_name,
+            from: { at: input.clockInAt, tz: company.timezone },
+          }),
       details: { ...input },
     });
     return newId;
@@ -327,7 +337,16 @@ export function updateEntry(db: DB, actor: Actor, company: CompanyRow, id: numbe
       companyId: company.id,
       entity: 'time_entry',
       entityId: id,
-      summary: `Corrected ${worker.full_name}'s attendance: ${formatLocal(clockInAt, company.timezone)} – ${clockOutAt ? formatLocal(clockOutAt, company.timezone, 'HH:mm') : 'open'}`,
+      summary: clockOutAt
+        ? msg('Corrected {name}’s attendance: {from} – {to}', {
+            name: worker.full_name,
+            from: { at: clockInAt, tz: company.timezone },
+            to: { at: clockOutAt, tz: company.timezone, style: 'time' },
+          })
+        : msg('Corrected {name}’s attendance: {from} (still checked in)', {
+            name: worker.full_name,
+            from: { at: clockInAt, tz: company.timezone },
+          }),
       details: {
         reason: patch.reason,
         before: { clockInAt: before.clock_in_at, clockOutAt: before.clock_out_at, siteId: before.site_id, status: before.status },
@@ -352,7 +371,7 @@ export function voidEntry(db: DB, actor: Actor, company: CompanyRow, id: number,
     companyId: company.id,
     entity: 'time_entry',
     entityId: id,
-    summary: `Removed ${worker.full_name}'s attendance of ${formatLocal(before.clock_in_at, company.timezone)}`,
+    summary: msg('Removed {name}’s attendance of {at}', { name: worker.full_name, at: { at: before.clock_in_at, tz: company.timezone } }),
     details: { reason, before: { status: before.status, clockInAt: before.clock_in_at, clockOutAt: before.clock_out_at } },
   });
 }
@@ -373,7 +392,7 @@ export function restoreEntry(db: DB, actor: Actor, company: CompanyRow, id: numb
     companyId: company.id,
     entity: 'time_entry',
     entityId: id,
-    summary: `Restored attendance entry #${id}`,
+    summary: msg('Restored attendance entry #{id}', { id }),
     details: { reason, status },
   });
   return getEntry(db, company, id);
@@ -419,7 +438,16 @@ export function reviewPunch(
       companyId: company.id,
       entity: 'punch',
       entityId: punchId,
-      summary: `${decision === 'approve' ? 'Accepted' : 'Rejected'} ${worker.full_name}'s check-${punch.type} of ${formatLocal(punch.at, company.timezone)}`,
+      summary: msg(
+        decision === 'approve'
+          ? punch.type === 'in'
+            ? 'Accepted {name}’s check-in of {at}'
+            : 'Accepted {name}’s check-out of {at}'
+          : punch.type === 'in'
+            ? 'Rejected {name}’s check-in of {at}'
+            : 'Rejected {name}’s check-out of {at}',
+        { name: worker.full_name, at: { at: punch.at, tz: company.timezone } },
+      ),
       details: { note, entryId: punch.entry_id, flags: parseJson<string[]>(punch.flags, []) },
     });
   })();

@@ -16,10 +16,13 @@ import type {
   SystemLog,
   UserRecord,
 } from '../../../shared/types';
+import { LOCALES } from '../../../shared/i18n';
 import { hashPassword, passwordProblem } from '../auth/password';
 import { revokeUserSessions } from '../auth/sessions';
 import type { CompanyRow, SiteRow, UserRow } from '../db/rows';
 import { actorOf, idParam, rateLimit, requireRole } from '../http';
+import { msg, tr } from '../i18n';
+import { jobLabel } from '../jobs';
 import { generatePassword, randomToken } from '../lib/crypto';
 import { badRequest, conflict, notFound } from '../lib/errors';
 import { isValidNetwork } from '../lib/ip';
@@ -47,6 +50,8 @@ const settingsSchema = z
     maxOpenHours: z.number().int().min(1).max(48),
     photoRetentionDays: z.number().int().min(1).max(3650),
     highRiskAction: z.enum(['review', 'reject']),
+    language: z.enum(LOCALES),
+    weekStartsOn: z.union([z.literal(0), z.literal(1), z.literal(6)]),
   })
   .partial();
 
@@ -127,7 +132,7 @@ export default async function devRoutes(app: FastifyInstance) {
         .prepare('INSERT INTO companies (name, timezone, settings, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
         .run(body.name, body.timezone, JSON.stringify(body.settings), body.notes, now, now).lastInsertRowid,
     );
-    audit(db, actor, 'company.create', { companyId: id, entity: 'company', entityId: id, summary: `Created company ${body.name}` });
+    audit(db, actor, 'company.create', { companyId: id, entity: 'company', entityId: id, summary: msg('Created company {name}', { name: body.name }) });
     return companySummary(getCompany(db, id));
   });
 
@@ -157,7 +162,7 @@ export default async function devRoutes(app: FastifyInstance) {
       companyId: before.id,
       entity: 'company',
       entityId: before.id,
-      summary: `Updated company ${body.name ?? before.name}`,
+      summary: msg('Updated company {name}', { name: body.name ?? before.name }),
       details: { before: { ...toCompany(before) }, changes: body },
     });
     return companySummary(getCompany(db, before.id));
@@ -176,7 +181,7 @@ export default async function devRoutes(app: FastifyInstance) {
       companyId: company.id,
       entity: 'company',
       entityId: company.id,
-      summary: `Deleted company ${company.name} and all its data`,
+      summary: msg('Deleted company {name} and all its data', { name: company.name }),
     });
     return { ok: true };
   });
@@ -212,7 +217,7 @@ export default async function devRoutes(app: FastifyInstance) {
       companyId: body.companyId,
       entity: 'site',
       entityId: id,
-      summary: `Added workplace ${body.name} (${body.radiusM} m radius)`,
+      summary: msg('Added workplace {name} ({radius} radius)', { name: body.name, radius: { meters: body.radiusM } }),
       details: { lat: body.lat, lng: body.lng, radiusM: body.radiusM, networks: body.networks },
     });
     return toSite(getSite(db, body.companyId, id));
@@ -242,7 +247,7 @@ export default async function devRoutes(app: FastifyInstance) {
       companyId: before.company_id,
       entity: 'site',
       entityId: id,
-      summary: `Updated workplace ${next.name}`,
+      summary: msg('Updated workplace {name}', { name: next.name }),
       details: { before: toSite(before), changes: body },
     });
     return toSite(getSite(db, before.company_id, id));
@@ -258,7 +263,7 @@ export default async function devRoutes(app: FastifyInstance) {
       .get(id, id) as { n: number };
     if (used.n > 0) throw conflict('This workplace has attendance history. Turn it off instead of deleting it.', 'SITE_IN_USE');
     db.prepare('DELETE FROM sites WHERE id = ?').run(id);
-    audit(db, actor, 'site.delete', { companyId: site.company_id, entity: 'site', entityId: id, summary: `Deleted workplace ${site.name}` });
+    audit(db, actor, 'site.delete', { companyId: site.company_id, entity: 'site', entityId: id, summary: msg('Deleted workplace {name}', { name: site.name }) });
     return { ok: true };
   });
 
@@ -271,7 +276,7 @@ export default async function devRoutes(app: FastifyInstance) {
   app.get('/api/dev/geocode', async (req) => {
     dev(req);
     const { q } = z.object({ q: z.string().trim().min(3).max(200) }).parse(req.query);
-    rateLimit(req, 'geocode', 1, 1100, 'Searching too fast. Wait a second.');
+    rateLimit(req, 'geocode', 1, 1100, tr('Searching too fast. Wait a second.'));
     const url = `${config.geocoderUrl}/search?format=jsonv2&limit=6&q=${encodeURIComponent(q)}`;
     try {
       const res = await fetch(url, {
@@ -320,6 +325,7 @@ export default async function devRoutes(app: FastifyInstance) {
         notes: z.string().max(2000).default(''),
         password: z.string().max(200).optional(),
         mustChangePassword: z.boolean().default(false),
+        locale: z.enum(LOCALES).nullable().optional(),
       })
       .parse(req.body);
     if (body.role === 'developer' && body.companyId) throw badRequest('Developer accounts do not belong to a company.');
@@ -338,8 +344,8 @@ export default async function devRoutes(app: FastifyInstance) {
       db
         .prepare(
           `INSERT INTO users (company_id, role, username, password_hash, full_name, phone, employee_code, notes,
-             must_change_password, password_changed_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             must_change_password, password_changed_at, created_at, updated_at, locale)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
         .run(
           body.role === 'developer' ? null : body.companyId,
@@ -354,13 +360,22 @@ export default async function devRoutes(app: FastifyInstance) {
           now,
           now,
           now,
+          // NULL: follow the phone's language; the app saves it on the first sign-in.
+          body.locale ?? null,
         ).lastInsertRowid,
     );
     audit(db, actor, 'user.create', {
       companyId: body.companyId,
       entity: 'user',
       entityId: id,
-      summary: `Created ${body.role} account ${body.username} (${body.fullName})`,
+      summary: msg(
+        body.role === 'worker'
+          ? 'Created worker account {username} ({name})'
+          : body.role === 'manager'
+            ? 'Created manager account {username} ({name})'
+            : 'Created owner account {username} ({name})',
+        { username: body.username, name: body.fullName },
+      ),
     });
     return { user: getUserRecord(db, id), password };
   });
@@ -377,6 +392,7 @@ export default async function devRoutes(app: FastifyInstance) {
         notes: z.string().max(2000).optional(),
         active: z.boolean().optional(),
         mustChangePassword: z.boolean().optional(),
+        locale: z.enum(LOCALES).nullable().optional(),
       })
       .parse(req.body);
     if (body.username && body.username !== before.username.toLowerCase()) {
@@ -390,7 +406,7 @@ export default async function devRoutes(app: FastifyInstance) {
     }
     db.prepare(
       `UPDATE users SET username = ?, full_name = ?, phone = ?, employee_code = ?, notes = ?, active = ?, must_change_password = ?,
-         updated_at = ? WHERE id = ?`,
+         locale = ?, updated_at = ? WHERE id = ?`,
     ).run(
       body.username ?? before.username,
       body.fullName ?? before.full_name,
@@ -399,6 +415,7 @@ export default async function devRoutes(app: FastifyInstance) {
       body.notes ?? before.notes,
       body.active === undefined ? before.active : body.active ? 1 : 0,
       body.mustChangePassword === undefined ? before.must_change_password : body.mustChangePassword ? 1 : 0,
+      body.locale === undefined ? before.locale : body.locale,
       nowIso(),
       before.id,
     );
@@ -407,7 +424,10 @@ export default async function devRoutes(app: FastifyInstance) {
       companyId: before.company_id,
       entity: 'user',
       entityId: before.id,
-      summary: `Updated ${before.full_name}${body.active === false ? ' (turned off)' : body.active === true ? ' (turned on)' : ''}`,
+      summary: msg(
+        body.active === false ? 'Updated {name} (turned off)' : body.active === true ? 'Updated {name} (turned on)' : 'Updated {name}',
+        { name: before.full_name },
+      ),
       details: {
         before: { username: before.username, fullName: before.full_name, phone: before.phone, active: !!before.active },
         changes: body,
@@ -432,7 +452,7 @@ export default async function devRoutes(app: FastifyInstance) {
       companyId: user.company_id,
       entity: 'user',
       entityId: user.id,
-      summary: `Reset the password of ${user.full_name}`,
+      summary: msg('Reset the password of {name}', { name: user.full_name }),
     });
     return { user: getUserRecord(db, user.id), password };
   });
@@ -454,7 +474,14 @@ export default async function devRoutes(app: FastifyInstance) {
       companyId: user.company_id,
       entity: 'user',
       entityId: user.id,
-      summary: `${{ unlock: 'Unlocked', 'logout-everywhere': 'Signed out everywhere:', 'reset-2fa': 'Turned off two-step sign-in for' }[params.action]} ${user.full_name}`,
+      summary: msg(
+        {
+          unlock: 'Unlocked {name}',
+          'logout-everywhere': 'Signed out everywhere: {name}',
+          'reset-2fa': 'Turned off two-step sign-in for {name}',
+        }[params.action],
+        { name: user.full_name },
+      ),
     });
     return getUserRecord(db, user.id);
   });
@@ -474,7 +501,14 @@ export default async function devRoutes(app: FastifyInstance) {
       companyId: user.company_id,
       entity: 'user',
       entityId: user.id,
-      summary: `Deleted ${user.role} ${user.username} (${user.full_name}) and all their data`,
+      summary: msg(
+        user.role === 'worker'
+          ? 'Deleted worker {username} ({name}) and all their data'
+          : user.role === 'manager'
+            ? 'Deleted manager {username} ({name}) and all their data'
+            : 'Deleted owner {username} ({name}) and all their data',
+        { username: user.username, name: user.full_name },
+      ),
     });
     return { ok: true };
   });
@@ -672,7 +706,7 @@ export default async function devRoutes(app: FastifyInstance) {
       | undefined;
     if (!row) throw notFound('Session not found.');
     db.prepare('UPDATE sessions SET revoked_at = ? WHERE id = ?').run(nowIso(), row.id);
-    audit(db, actor, 'session.revoke', { companyId: row.company_id, entity: 'session', summary: `Signed out a session of ${row.full_name}` });
+    audit(db, actor, 'session.revoke', { companyId: row.company_id, entity: 'session', summary: msg('Signed out a session of {name}', { name: row.full_name }) });
     return { ok: true };
   });
 
@@ -684,7 +718,7 @@ export default async function devRoutes(app: FastifyInstance) {
   app.post('/api/dev/jobs/:name/run', async (req): Promise<JobRun> => {
     const actor = dev(req);
     const { name } = z.object({ name: z.enum(['attendance', 'cleanup', 'integrity', 'backup']) }).parse(req.params);
-    audit(db, actor, 'job.run', { entity: 'job', entityId: name, summary: `Ran the ${name} job by hand` });
+    audit(db, actor, 'job.run', { entity: 'job', entityId: name, summary: msg('Ran the “{job}” job by hand', { job: { msg: jobLabel(name) } }) });
     return jobs.run(name);
   });
 
@@ -695,7 +729,7 @@ export default async function devRoutes(app: FastifyInstance) {
     fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, `backup-${randomToken(8)}.db`);
     await db.backup(file);
-    audit(db, actor, 'system.backup_download', { entity: 'system', summary: 'Downloaded a database backup' });
+    audit(db, actor, 'system.backup_download', { entity: 'system', summary: msg('Downloaded a database backup') });
     const stream = fs.createReadStream(file);
     stream.on('close', () => fs.rm(file, { force: true }, () => undefined));
     reply

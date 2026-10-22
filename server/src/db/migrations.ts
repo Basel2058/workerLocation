@@ -300,4 +300,15 @@ CREATE TABLE app_settings (
 );
 `,
   },
+  {
+    id: 2,
+    name: 'languages',
+    sql: `
+-- The language each person uses (NULL until chosen). Stored texts keep a translatable copy (key + parameters).
+ALTER TABLE users ADD COLUMN locale TEXT CHECK (locale IN ('en', 'ar', 'he'));
+ALTER TABLE audit_log ADD COLUMN summary_i18n TEXT;
+ALTER TABLE security_events ADD COLUMN message_i18n TEXT;
+ALTER TABLE job_runs ADD COLUMN last_message_i18n TEXT;
+`,
+  },
 ];

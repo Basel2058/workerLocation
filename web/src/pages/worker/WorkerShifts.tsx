@@ -6,21 +6,22 @@ import { Badge, Card, EmptyState, ErrorBox, PageLoader, Segmented } from '../../
 import { get } from '../../lib/api';
 import { useUser } from '../../lib/auth';
 import { fmtDay, fmtDuration, fmtTime } from '../../lib/format';
+import { t } from '../../lib/i18n';
 
 export function WorkerShifts() {
   const [tab, setTab] = useState<'upcoming' | 'history'>('upcoming');
   return (
     <div className="animate-fade-up">
       <header className="flex items-center justify-between pt-2 pb-4">
-        <h1 className="text-[26px] font-semibold tracking-tight">My shifts</h1>
+        <h1 className="text-[26px] font-semibold tracking-tight">{t('worker.shifts.title')}</h1>
       </header>
       <Segmented
         className="mb-4 w-full"
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'upcoming', label: 'Upcoming', icon: CalendarDays },
-          { value: 'history', label: 'Worked', icon: History },
+          { value: 'upcoming', label: t('worker.shifts.upcoming'), icon: CalendarDays },
+          { value: 'history', label: t('worker.shifts.worked'), icon: History },
         ]}
       />
       {tab === 'upcoming' ? <Upcoming /> : <WorkedHistory />}
@@ -36,7 +37,7 @@ function Upcoming() {
   if (q.isError) return <ErrorBox error={q.error} onRetry={() => void q.refetch()} />;
   const shifts = q.data.filter((s) => s.state !== 'worked' && s.state !== 'missed');
   if (shifts.length === 0) {
-    return <EmptyState icon={CalendarDays} title="No upcoming shifts" body="When your manager plans your shifts, they show up here." />;
+    return <EmptyState icon={CalendarDays} title={t('worker.shifts.noUpcomingTitle')} body={t('worker.shifts.noUpcomingBody')} />;
   }
   const byDay = new Map<string, WorkerShift[]>();
   for (const s of shifts) byDay.set(s.date, [...(byDay.get(s.date) ?? []), s]);
@@ -50,7 +51,7 @@ function Upcoming() {
               <div key={s.id} className="flex items-center gap-3 px-4 py-3.5">
                 <div className="min-w-0 flex-1">
                   <p className="tabular text-[17px] font-semibold">
-                    {fmtTime(s.startsAt, tz)} – {fmtTime(s.endsAt, tz)}
+                    {t('common.range', { from: fmtTime(s.startsAt, tz), to: fmtTime(s.endsAt, tz) })}
                   </p>
                   <p className="flex items-center gap-1 truncate text-sm text-muted">
                     <MapPin className="size-3.5 shrink-0" aria-hidden />
@@ -59,7 +60,7 @@ function Upcoming() {
                   {s.note && <p className="mt-1 text-sm text-ink-2">{s.note}</p>}
                 </div>
                 <span className="tabular text-sm text-faint">{fmtDuration((Date.parse(s.endsAt) - Date.parse(s.startsAt)) / 60_000)}</span>
-                {s.state === 'now' && <Badge tone="teal">Now</Badge>}
+                {s.state === 'now' && <Badge tone="teal">{t('worker.status.shiftNow')}</Badge>}
               </div>
             ))}
           </Card>
@@ -76,13 +77,13 @@ function WorkedHistory() {
   if (q.isPending) return <PageLoader />;
   if (q.isError) return <ErrorBox error={q.error} onRetry={() => void q.refetch()} />;
   if (q.data.length === 0) {
-    return <EmptyState icon={History} title="Nothing yet" body="Your check-ins of the last 30 days will show up here." />;
+    return <EmptyState icon={History} title={t('worker.shifts.noHistoryTitle')} body={t('worker.shifts.noHistoryBody')} />;
   }
   const total = q.data.reduce((s, d) => s + d.minutes, 0);
   return (
     <div className="space-y-4">
       <Card className="flex items-center justify-between p-4">
-        <span className="text-sm text-muted">Last 30 days</span>
+        <span className="text-sm text-muted">{t('worker.shifts.last30Days')}</span>
         <span className="tabular text-xl font-semibold">{fmtDuration(total)}</span>
       </Card>
       {q.data.map((day) => (
@@ -90,7 +91,7 @@ function WorkedHistory() {
           <div className="mb-2 flex items-baseline justify-between px-1">
             <h2 className="text-[13px] font-semibold text-muted">{fmtDay(day.date, { relative: true, tz })}</h2>
             <span className="tabular text-[13px] font-medium text-ink-2">
-              {day.entries.some((e) => e.status === 'open') ? 'In progress' : fmtDuration(day.minutes)}
+              {day.entries.some((e) => e.status === 'open') ? t('worker.shifts.inProgress') : fmtDuration(day.minutes)}
             </span>
           </div>
           <Card className="divide-y divide-line">
@@ -98,16 +99,19 @@ function WorkedHistory() {
               <div key={e.id} className="px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="tabular font-medium">
-                    {fmtTime(e.clockInAt, tz)} → {e.clockOutAt ? fmtTime(e.clockOutAt, tz) : e.status === 'open' ? 'now' : '?'}
+                    {t('common.arrow', {
+                      from: fmtTime(e.clockInAt, tz),
+                      to: e.clockOutAt ? fmtTime(e.clockOutAt, tz) : e.status === 'open' ? t('common.now') : t('worker.shifts.noEnd'),
+                    })}
                   </p>
                   <span className="tabular text-sm text-ink-2">{e.minutes !== null ? fmtDuration(e.minutes) : ''}</span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  {e.siteName && <span className="mr-1 text-sm text-muted">{e.siteName}</span>}
-                  {e.status === 'open' && <Badge tone="green" dot>Checked in</Badge>}
-                  {e.status === 'incomplete' && <Badge tone="amber">No check-out</Badge>}
-                  {e.lateMinutes !== null && <Badge tone="amber">{fmtDuration(e.lateMinutes)} late</Badge>}
-                  {e.needsReview && <Badge tone="violet">Waiting for manager</Badge>}
+                  {e.siteName && <span className="me-1 text-sm text-muted">{e.siteName}</span>}
+                  {e.status === 'open' && <Badge tone="green" dot>{t('worker.status.checkedIn')}</Badge>}
+                  {e.status === 'incomplete' && <Badge tone="amber">{t('worker.status.noCheckOut')}</Badge>}
+                  {e.lateMinutes !== null && <Badge tone="amber">{t('worker.status.late', { duration: fmtDuration(e.lateMinutes) })}</Badge>}
+                  {e.needsReview && <Badge tone="violet">{t('worker.status.waitingForManager')}</Badge>}
                 </div>
               </div>
             ))}

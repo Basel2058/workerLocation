@@ -1,4 +1,5 @@
 import type { DB } from '../db';
+import { storeMsg, type Msg } from '../i18n';
 import { nowIso } from '../lib/time';
 
 export interface Actor {
@@ -19,13 +20,16 @@ export function audit(
     companyId?: number | null;
     entity?: string;
     entityId?: string | number;
-    summary?: string;
+    /** A message (msg(...)) is shown to each reader in their language. */
+    summary?: string | Msg;
     details?: Record<string, unknown>;
   } = {},
 ): void {
+  const summary = storeMsg(opts.summary ?? '');
   db.prepare(
-    `INSERT INTO audit_log (at, actor_id, actor_name, actor_role, company_id, action, entity, entity_id, summary, details, ip)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO audit_log (at, actor_id, actor_name, actor_role, company_id, action, entity, entity_id, summary, summary_i18n,
+       details, ip)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     nowIso(),
     actor.id,
@@ -35,7 +39,8 @@ export function audit(
     action,
     opts.entity ?? '',
     opts.entityId === undefined ? '' : String(opts.entityId),
-    opts.summary ?? '',
+    summary.english,
+    summary.i18n,
     JSON.stringify(opts.details ?? {}),
     actor.ip ?? '',
   );
@@ -51,16 +56,18 @@ export function securityEvent(
     userId?: number | null;
     kind: string;
     severity: Severity;
-    message: string;
+    /** A message (msg(...)) is shown to each reader in their language. */
+    message: string | Msg;
     details?: Record<string, unknown>;
     ip?: string;
   },
 ): number {
+  const message = storeMsg(event.message);
   return Number(
     db
       .prepare(
-        `INSERT INTO security_events (at, company_id, user_id, kind, severity, message, details, ip)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO security_events (at, company_id, user_id, kind, severity, message, message_i18n, details, ip)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         nowIso(),
@@ -68,7 +75,8 @@ export function securityEvent(
         event.userId ?? null,
         event.kind,
         event.severity,
-        event.message,
+        message.english,
+        message.i18n,
         JSON.stringify(event.details ?? {}),
         event.ip ?? '',
       ).lastInsertRowid,

@@ -7,6 +7,7 @@ import { useToast } from '../../components/Toast';
 import { Button, Field, Input, Select, Switch, Textarea } from '../../components/ui';
 import { errorMessage } from '../../lib/api';
 import { toLocalInput } from '../../lib/format';
+import { t } from '../../lib/i18n';
 import { useManager } from './context';
 
 export type EntryEditorTarget =
@@ -66,10 +67,10 @@ export function EntryEditor({ target, onClose }: { target: EntryEditorTarget | n
       const out = stillHere ? null : clockOut || null;
       if (target?.mode === 'create') {
         await m.post('/api/m/entries', { workerId: target.workerId, siteId, clockIn, clockOut: out, reason: reason.trim() });
-        toast.success('Attendance added');
+        toast.success(t('manager.entry.added'));
       } else if (target?.mode === 'edit') {
         await m.patch(`/api/m/entries/${target.entryId}`, { clockIn, clockOut: out, siteId: siteId || undefined, reason: reason.trim() });
-        toast.success('Attendance corrected');
+        toast.success(t('manager.entry.corrected'));
       }
       await refresh();
       onClose();
@@ -83,20 +84,20 @@ export function EntryEditor({ target, onClose }: { target: EntryEditorTarget | n
   const remove = async () => {
     if (target?.mode !== 'edit') return;
     if (reason.trim().length < 3) {
-      setError('Write a short reason first.');
+      setError(t('manager.entry.reasonFirst'));
       return;
     }
     const ok = await confirm({
-      title: 'Remove this attendance?',
-      body: 'It will no longer count for hours. You can restore it later from Hours.',
-      confirmText: 'Remove',
+      title: t('manager.entry.removeTitle'),
+      body: t('manager.entry.removeBody'),
+      confirmText: t('manager.entry.remove'),
       variant: 'danger',
     });
     if (!ok) return;
     setBusy(true);
     try {
       await m.post(`/api/m/entries/${target.entryId}/void`, { reason: reason.trim() });
-      toast.success('Attendance removed');
+      toast.success(t('manager.entry.removed'));
       await refresh();
       onClose();
     } catch (err) {
@@ -113,51 +114,50 @@ export function EntryEditor({ target, onClose }: { target: EntryEditorTarget | n
     <Dialog
       open={!!target}
       onClose={onClose}
-      title={target?.mode === 'edit' ? 'Correct attendance' : 'Add attendance'}
+      title={target?.mode === 'edit' ? t('manager.entry.correctTitle') : t('manager.shared.addAttendance')}
       description={target?.workerName}
       footer={
         <>
           {target?.mode === 'edit' && (
-            <Button variant="dangerSoft" icon={Trash2} onClick={() => void remove()} disabled={busy} className="mr-auto">
-              Remove
+            <Button variant="dangerSoft" icon={Trash2} onClick={() => void remove()} disabled={busy} className="me-auto">
+              {t('manager.entry.remove')}
             </Button>
           )}
           <Button variant="ghost" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant="brand" loading={busy} disabled={!canSave} onClick={() => void save()}>
-            Save
+            {t('common.save')}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
-        <Field label="Workplace" htmlFor="entry-site">
+        <Field label={t('manager.shared.workplace')} htmlFor="entry-site">
           <Select id="entry-site" value={siteId} onChange={(e) => setSiteId(Number(e.target.value))}>
             {sites.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
-                {!s.active ? ' (off)' : ''}
+                {s.active ? s.name : t('manager.entry.siteOff', { name: s.name })}
               </option>
             ))}
           </Select>
         </Field>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Checked in" htmlFor="entry-in">
+          <Field label={t('manager.shared.checkedIn')} htmlFor="entry-in">
             <Input id="entry-in" type="datetime-local" value={clockIn} onChange={(e) => setClockIn(e.target.value)} />
           </Field>
-          <Field label="Checked out" htmlFor="entry-out">
+          <Field label={t('manager.shared.checkedOut')} htmlFor="entry-out">
             <Input id="entry-out" type="datetime-local" value={stillHere ? '' : clockOut} disabled={stillHere} onChange={(e) => setClockOut(e.target.value)} />
           </Field>
         </div>
-        <Switch checked={stillHere} onChange={setStillHere} label="Still at work" description="Leave the check-out empty for now." />
-        <Field label="Reason" htmlFor="entry-reason" hint="Saved in the change history together with your name.">
+        <Switch checked={stillHere} onChange={setStillHere} label={t('manager.entry.stillHere')} description={t('manager.entry.stillHereHint')} />
+        <Field label={t('manager.shared.reason')} htmlFor="entry-reason" hint={t('manager.entry.reasonHint')}>
           <Textarea
             id="entry-reason"
             rows={2}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="For example: forgot to check out, left at 16:00"
+            placeholder={t('manager.entry.reasonPlaceholder')}
           />
         </Field>
         {error && <p className="rounded-xl bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">{error}</p>}

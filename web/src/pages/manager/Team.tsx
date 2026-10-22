@@ -51,8 +51,8 @@ export function TeamPage() {
     <div className="animate-fade-up">
       <PageHeader title="Team" description={`${team.data.filter((w) => w.active).length} workers. New accounts are created by the app owner.`} />
       <div className="relative mb-4 max-w-sm">
-        <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-faint" />
-        <Input placeholder="Search by name or phone" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
+        <Search className="absolute top-1/2 start-3 size-4 -translate-y-1/2 text-faint" />
+        <Input placeholder="Search by name or phone" value={q} onChange={(e) => setQ(e.target.value)} className="ps-9" />
       </div>
       {list.length === 0 ? (
         <Card>
@@ -63,7 +63,7 @@ export function TeamPage() {
           {list.map((w) => (
             <Card key={w.id} className={w.active ? '' : 'opacity-60'}>
               <div className="flex items-center gap-3 p-4">
-                <ButtonLink to={`${m.base}/team/${w.id}`} variant="ghost" className="h-auto min-w-0 flex-1 justify-start gap-3 rounded-xl p-0 text-left hover:bg-transparent">
+                <ButtonLink to={`${m.base}/team/${w.id}`} variant="ghost" className="h-auto min-w-0 flex-1 justify-start gap-3 rounded-xl p-0 text-start hover:bg-transparent">
                   <Avatar name={w.fullName} size={44} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-semibold text-ink">{w.fullName}</span>
@@ -82,11 +82,11 @@ export function TeamPage() {
                 {deviceBadge(w.device.status)}
                 {w.pushEnabled && (
                   <Badge tone="blue" title="Gets notifications">
-                    <BellRing className="mr-0.5 inline size-3" /> Alerts on
+                    <BellRing className="me-0.5 inline size-3" /> Alerts on
                   </Badge>
                 )}
                 {!w.active && <Badge tone="gray">Turned off</Badge>}
-                <ButtonLink to={`${m.base}/team/${w.id}`} size="xs" variant="ghost" className="ml-auto">
+                <ButtonLink to={`${m.base}/team/${w.id}`} size="xs" variant="ghost" className="ms-auto">
                   Details <ChevronRight className="size-3.5" />
                 </ButtonLink>
               </div>
@@ -137,7 +137,7 @@ export function WorkerDetailPage() {
     <div className="animate-fade-up">
       <PageHeader
         back={
-          <ButtonLink to={`${m.base}/team`} variant="ghost" size="sm" icon={ArrowLeft} className="-ml-2 mb-2">
+          <ButtonLink to={`${m.base}/team`} variant="ghost" size="sm" icon={ArrowLeft} className="-ms-2 mb-2">
             Team
           </ButtonLink>
         }
@@ -193,7 +193,7 @@ export function WorkerDetailPage() {
                     <div className="min-w-0 flex-1">
                       <p className="tabular text-sm">
                         {fmtTime(e.clockInAt, tz)} → {e.clockOutAt ? fmtTime(e.clockOutAt, tz) : e.status === 'open' ? 'now' : '—'}
-                        <span className="ml-2 text-muted">{e.minutes !== null ? fmtDuration(e.minutes) : ''}</span>
+                        <span className="ms-2 text-muted">{e.minutes !== null ? fmtDuration(e.minutes) : ''}</span>
                       </p>
                       <div className="mt-0.5 flex flex-wrap gap-1">
                         {e.lateMinutes !== null && <Badge tone="amber">{fmtDuration(e.lateMinutes)} late</Badge>}
@@ -234,7 +234,7 @@ export function WorkerDetailPage() {
                     <Button
                       size="xs"
                       variant="dangerSoft"
-                      className="mt-2 ml-8"
+                      className="mt-2 ms-8"
                       onClick={async () => {
                         const ok = await confirm({
                           title: 'Remove this phone?',
@@ -249,7 +249,7 @@ export function WorkerDetailPage() {
                     </Button>
                   )}
                   {d.status === 'pending' && (
-                    <div className="mt-2 ml-8 flex gap-2">
+                    <div className="mt-2 ms-8 flex gap-2">
                       <Button size="xs" variant="success" onClick={() => action.mutate({ path: `/api/m/devices/${d.id}/approve`, message: 'Phone approved' })}>
                         Approve
                       </Button>

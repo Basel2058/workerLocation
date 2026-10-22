@@ -8,6 +8,7 @@ import { revokeUserSessions } from './auth/sessions';
 import { loadConfig } from './config';
 import { openDatabase } from './db';
 import type { UserRow } from './db/rows';
+import { msg } from './i18n';
 import { generatePassword } from './lib/crypto';
 import { nowIso } from './lib/time';
 import { audit } from './services/logs';
@@ -34,7 +35,7 @@ async function main() {
       `INSERT INTO users (company_id, role, username, password_hash, full_name, must_change_password, password_changed_at, created_at, updated_at)
        VALUES (NULL, 'developer', ?, ?, ?, ?, ?, ?, ?)`,
     ).run(name, await hashPassword(password), name, givenPassword ? 0 : 1, now, now, now);
-    audit(db, CLI_ACTOR, 'user.create', { entity: 'user', summary: `Created developer ${name} from the server console` });
+    audit(db, CLI_ACTOR, 'user.create', { entity: 'user', summary: msg('Created owner account {username} from the server console', { username: name }) });
     console.log(`Developer "${name}" created. Password: ${password}`);
   } else if (command === 'reset-password') {
     if (!user) throw new Error(`No user ${name}.`);
@@ -45,12 +46,12 @@ async function main() {
       'UPDATE users SET password_hash = ?, must_change_password = ?, failed_logins = 0, locked_until = NULL, updated_at = ? WHERE id = ?',
     ).run(await hashPassword(password), givenPassword ? 0 : 1, nowIso(), user.id);
     revokeUserSessions(db, user.id);
-    audit(db, CLI_ACTOR, 'user.reset_password', { companyId: user.company_id, entity: 'user', entityId: user.id, summary: `Reset password of ${name} from the server console` });
+    audit(db, CLI_ACTOR, 'user.reset_password', { companyId: user.company_id, entity: 'user', entityId: user.id, summary: msg('Reset the password of {username} from the server console', { username: name }) });
     console.log(`Password of "${name}" reset. New password: ${password}`);
   } else if (command === 'unlock') {
     if (!user) throw new Error(`No user ${name}.`);
     db.prepare('UPDATE users SET failed_logins = 0, locked_until = NULL, active = 1 WHERE id = ?').run(user.id);
-    audit(db, CLI_ACTOR, 'user.unlock', { companyId: user.company_id, entity: 'user', entityId: user.id, summary: `Unlocked ${name} from the server console` });
+    audit(db, CLI_ACTOR, 'user.unlock', { companyId: user.company_id, entity: 'user', entityId: user.id, summary: msg('Unlocked {username} from the server console', { username: name }) });
     console.log(`"${name}" unlocked.`);
   } else {
     throw new Error(`Unknown command ${command}`);

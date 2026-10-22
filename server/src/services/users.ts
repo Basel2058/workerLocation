@@ -3,6 +3,7 @@ import type { DB } from '../db';
 import type { CompanyRow, UserRow } from '../db/rows';
 import { notFound } from '../lib/errors';
 import { nowIso } from '../lib/time';
+import { companySettings } from './companies';
 
 export function isLocked(user: Pick<UserRow, 'locked_until'>): boolean {
   return !!user.locked_until && user.locked_until > nowIso();
@@ -20,6 +21,8 @@ export function toSessionUser(user: UserRow, company: CompanyRow | null): Sessio
     timezone: company?.timezone ?? 'UTC',
     mustChangePassword: !!user.must_change_password,
     totpEnabled: !!user.totp_enabled,
+    locale: user.locale,
+    weekStartsOn: company ? companySettings(company).weekStartsOn : 1,
   };
 }
 
@@ -57,6 +60,7 @@ function toUserRecord(row: UserListRow): UserRecord {
     lastLoginAt: row.last_login_at,
     lastSeenAt: row.last_seen_at,
     createdAt: row.created_at,
+    locale: row.locale,
     activeDevice: row.device_id
       ? { id: row.device_id, label: row.device_label ?? '', lastUsedAt: row.device_last_used_at }
       : null,

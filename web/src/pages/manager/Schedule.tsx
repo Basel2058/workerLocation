@@ -4,10 +4,11 @@ import { useMemo, useState } from 'react';
 import type { Shift, TeamMember } from '../../../../shared/types';
 import { Dialog, useConfirm } from '../../components/Dialog';
 import { useToast } from '../../components/Toast';
-import { Avatar, Button, Card, cx, EmptyState, ErrorBox, Field, IconButton, Input, PageHeader, PageLoader, Select, Textarea } from '../../components/ui';
+import { Avatar, Button, Card, cx, EmptyState, ErrorBox, Field, IconButton, Input, Ltr, PageHeader, PageLoader, Select, Textarea } from '../../components/ui';
 import { ApiError, errorMessage, qs } from '../../lib/api';
 import { addDays, fmtDayMonth, fmtTime, fmtTimeCompact, fmtWeekday, todayIn, toClockInput, weekStartOf } from '../../lib/format';
 import { useIsDesktop } from '../../lib/hooks';
+import { t, tRich } from '../../lib/i18n';
 import { useManager } from './context';
 
 const SITE_COLORS = ['bg-teal-500', 'bg-sky-500', 'bg-violet-500', 'bg-amber-500', 'bg-rose-500', 'bg-emerald-500', 'bg-indigo-500', 'bg-orange-500'];
@@ -45,14 +46,15 @@ export function SchedulePage() {
   const copyLastWeek = async () => {
     const from = addDays(week, -7);
     const ok = await confirm({
-      title: 'Copy last week?',
-      body: `All shifts from the week of ${fmtDayMonth(from)} are copied to this week. Shifts that would overlap are skipped.`,
-      confirmText: 'Copy shifts',
+      title: t('manager.schedule.copyTitle'),
+      body: t('manager.schedule.copyBody', { date: fmtDayMonth(from) }),
+      confirmText: t('manager.schedule.copyConfirm'),
     });
     if (!ok) return;
     try {
       const res = await m.post<{ created: number; skipped: number }>('/api/m/shifts/copy-week', { from, to: week });
-      toast.success(`${res.created} shift${res.created === 1 ? '' : 's'} copied${res.skipped ? `, ${res.skipped} skipped` : ''}`);
+      const copied = t('manager.schedule.copied', { count: res.created });
+      toast.success(res.skipped ? `${copied}${t('common.separator')}${t('manager.schedule.skipped', { count: res.skipped })}` : copied);
       await qc.invalidateQueries({ queryKey: m.key('shifts') });
     } catch (err) {
       toast.error(err);
@@ -71,15 +73,15 @@ export function SchedulePage() {
   return (
     <div className="animate-fade-up">
       <PageHeader
-        title="Schedule"
-        description="Plan who works where and when. Workers see their shifts in the app."
+        title={t('manager.schedule.title')}
+        description={t('manager.schedule.description')}
         actions={
           <>
             <Button icon={Copy} onClick={() => void copyLastWeek()}>
-              Copy last week
+              {t('manager.schedule.copyLastWeek')}
             </Button>
             <Button variant="brand" icon={Plus} onClick={() => openCreate([], [isDesktop ? days[0]! : day])} disabled={!m.sites.length}>
-              Add shifts
+              {t('manager.schedule.addShifts')}
             </Button>
           </>
         }
@@ -87,11 +89,9 @@ export function SchedulePage() {
 
       <div className="mb-4 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
-          <IconButton icon={ChevronLeft} label="Previous week" variant="secondary" onClick={() => setWeek(addDays(week, -7))} />
-          <IconButton icon={ChevronRight} label="Next week" variant="secondary" onClick={() => setWeek(addDays(week, 7))} />
-          <p className="ml-2 text-[15px] font-semibold">
-            {fmtDayMonth(days[0]!)} – {fmtDayMonth(days[6]!)}
-          </p>
+          <IconButton icon={ChevronLeft} label={t('manager.schedule.previousWeek')} variant="secondary" onClick={() => setWeek(addDays(week, -7))} />
+          <IconButton icon={ChevronRight} label={t('manager.schedule.nextWeek')} variant="secondary" onClick={() => setWeek(addDays(week, 7))} />
+          <p className="ms-2 text-[15px] font-semibold">{t('common.range', { from: fmtDayMonth(days[0]!), to: fmtDayMonth(days[6]!) })}</p>
         </div>
         {week !== weekStartOf(today) && (
           <Button
@@ -102,14 +102,14 @@ export function SchedulePage() {
               setDay(today);
             }}
           >
-            This week
+            {t('manager.schedule.thisWeek')}
           </Button>
         )}
       </div>
 
       {!m.sites.length && (
         <Card className="mb-4">
-          <EmptyState icon={CalendarDays} title="No workplaces yet" body="Ask the app owner to add your workplaces before planning shifts." />
+          <EmptyState icon={CalendarDays} title={t('manager.schedule.noSitesTitle')} body={t('manager.schedule.noSitesBody')} />
         </Card>
       )}
 
@@ -122,9 +122,9 @@ export function SchedulePage() {
           <table className="w-full min-w-[960px] table-fixed border-collapse text-sm">
             <thead>
               <tr className="border-b border-line">
-                <th className="sticky left-0 z-10 w-52 bg-surface px-4 py-3 text-left font-medium text-muted">Worker</th>
+                <th className="sticky start-0 z-10 w-52 bg-surface px-4 py-3 text-start font-medium text-muted">{t('manager.shared.worker')}</th>
                 {days.map((d) => (
-                  <th key={d} className={cx('px-2 py-3 text-left font-medium', d === today ? 'text-brand' : 'text-muted')}>
+                  <th key={d} className={cx('px-2 py-3 text-start font-medium', d === today ? 'text-brand' : 'text-muted')}>
                     <span className="block text-xs">{fmtWeekday(d)}</span>
                     <span className={cx('text-[15px]', d === today ? 'font-semibold' : 'text-ink')}>{fmtDayMonth(d)}</span>
                   </th>
@@ -134,7 +134,7 @@ export function SchedulePage() {
             <tbody>
               {workers.map((w) => (
                 <tr key={w.id} className="group border-b border-line last:border-0">
-                  <td className="sticky left-0 z-10 bg-surface px-4 py-2">
+                  <td className="sticky start-0 z-10 bg-surface px-4 py-2">
                     <div className="flex items-center gap-2.5">
                       <Avatar name={w.fullName} size={30} />
                       <span className="truncate font-medium">{w.fullName}</span>
@@ -152,7 +152,7 @@ export function SchedulePage() {
                             <button
                               onClick={() => openCreate([w.id], [d])}
                               className="grid h-full min-h-12 place-items-center rounded-lg text-faint opacity-0 transition-opacity group-hover:opacity-100 hover:bg-surface-2 hover:text-ink focus:opacity-100"
-                              aria-label={`Add shift for ${w.fullName} on ${fmtWeekday(d, 'long')}`}
+                              aria-label={t('manager.schedule.addShiftFor', { name: w.fullName, day: fmtWeekday(d, 'long') })}
                             >
                               <Plus className="size-4" />
                             </button>
@@ -165,7 +165,7 @@ export function SchedulePage() {
               ))}
             </tbody>
           </table>
-          {workers.length === 0 && <EmptyState title="No workers yet" body="The app owner adds worker accounts for your company." />}
+          {workers.length === 0 && <EmptyState title={t('manager.schedule.noWorkersTitle')} body={t('manager.schedule.noWorkersBody')} />}
         </Card>
       ) : (
         <MobileDays days={days} day={day} setDay={setDay} today={today} shifts={shifts.data ?? []} tz={m.tz} siteColor={siteColor} onEdit={openEdit} onAdd={() => openCreate([], [day])} />
@@ -188,11 +188,11 @@ export function SchedulePage() {
 
 function ShiftChip({ shift, tz, color, onClick }: { shift: Shift; tz: string; color: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="w-full rounded-lg bg-surface-2 px-2 py-1.5 text-left ring-1 ring-line transition-colors hover:bg-surface-3" title={shift.note || undefined}>
+    <button onClick={onClick} className="w-full rounded-lg bg-surface-2 px-2 py-1.5 text-start ring-1 ring-line transition-colors hover:bg-surface-3" title={shift.note || undefined}>
       <span className="flex items-center gap-1.5">
         <span className={cx('size-2 shrink-0 rounded-full', color)} />
         <span className="tabular truncate text-[13px] font-medium">
-          {fmtTimeCompact(shift.startsAt, tz)}–{fmtTimeCompact(shift.endsAt, tz)}
+          {t('common.range', { from: fmtTimeCompact(shift.startsAt, tz), to: fmtTimeCompact(shift.endsAt, tz) })}
         </span>
       </span>
       <span className="mt-0.5 block truncate text-[11px] text-muted">{shift.siteName}</span>
@@ -237,7 +237,7 @@ function MobileDays({
                 d === selected ? 'bg-ink text-bg' : d === today ? 'bg-brand-soft text-brand' : 'bg-surface text-ink-2 ring-1 ring-line',
               )}
             >
-              <span className="opacity-80">{fmtWeekday(d).slice(0, 2)}</span>
+              <span className="opacity-80">{fmtWeekday(d)}</span>
               <span className="text-[15px] font-semibold">{d.slice(8)}</span>
               <span className={cx('mt-0.5 size-1.5 rounded-full', count ? (d === selected ? 'bg-bg' : 'bg-brand') : 'bg-transparent')} />
             </button>
@@ -246,22 +246,27 @@ function MobileDays({
       </div>
       <Card className="divide-y divide-line">
         {list.length === 0 ? (
-          <EmptyState title="No shifts this day" action={<Button icon={Plus} onClick={onAdd}>Add shifts</Button>} />
+          <EmptyState
+            title={t('manager.schedule.noShiftsDay')}
+            action={
+              <Button icon={Plus} onClick={onAdd}>
+                {t('manager.schedule.addShifts')}
+              </Button>
+            }
+          />
         ) : (
           list.map((s) => (
-            <button key={s.id} onClick={() => onEdit(s)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/60">
+            <button key={s.id} onClick={() => onEdit(s)} className="flex w-full items-center gap-3 px-4 py-3 text-start hover:bg-surface-2/60">
               <Avatar name={s.workerName} size={36} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{s.workerName}</p>
                 <p className="flex items-center gap-1.5 truncate text-[13px] text-muted">
                   <span className={cx('size-2 shrink-0 rounded-full', siteColor(s.siteId))} />
                   {s.siteName}
-                  {s.note && ` · ${s.note}`}
+                  {s.note && `${t('common.separator')}${s.note}`}
                 </p>
               </div>
-              <span className="tabular text-sm font-medium">
-                {fmtTime(s.startsAt, tz)}–{fmtTime(s.endsAt, tz)}
-              </span>
+              <span className="tabular text-sm font-medium">{t('common.range', { from: fmtTime(s.startsAt, tz), to: fmtTime(s.endsAt, tz) })}</span>
             </button>
           ))
         )}
@@ -319,10 +324,10 @@ function ShiftDialog({
           end: draft.end,
           note: draft.note,
         });
-        await done(`${res.length} shift${res.length === 1 ? '' : 's'} added`);
+        await done(t('manager.schedule.added', { count: res.length }));
       } else {
         await m.patch(`/api/m/shifts/${draft.shift.id}`, { siteId: draft.siteId, date: draft.date, start: draft.start, end: draft.end, note: draft.note });
-        await done('Shift updated');
+        await done(t('manager.schedule.updated'));
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -336,10 +341,16 @@ function ShiftDialog({
 
   const remove = async () => {
     if (draft?.mode !== 'edit') return;
-    if (!(await confirm({ title: 'Delete this shift?', body: `${draft.shift.workerName}, ${fmtWeekday(draft.shift.date, 'long')}`, confirmText: 'Delete', variant: 'danger' }))) return;
+    const ok = await confirm({
+      title: t('manager.schedule.deleteTitle'),
+      body: t('manager.schedule.deleteBody', { name: draft.shift.workerName, day: fmtWeekday(draft.shift.date, 'long') }),
+      confirmText: t('common.delete'),
+      variant: 'danger',
+    });
+    if (!ok) return;
     try {
       await m.del(`/api/m/shifts/${draft.shift.id}`);
-      await done('Shift deleted');
+      await done(t('manager.schedule.deleted'));
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -357,37 +368,37 @@ function ShiftDialog({
       open
       onClose={close}
       size="lg"
-      title={draft.mode === 'create' ? 'Add shifts' : 'Edit shift'}
-      description={draft.mode === 'edit' ? draft.shift.workerName : 'Pick people and days — one shift is created for each.'}
+      title={draft.mode === 'create' ? t('manager.schedule.addShifts') : t('manager.schedule.editShift')}
+      description={draft.mode === 'edit' ? draft.shift.workerName : t('manager.schedule.createHint')}
       footer={
         <>
           {draft.mode === 'edit' && (
-            <Button variant="dangerSoft" icon={Trash2} className="mr-auto" onClick={() => void remove()}>
-              Delete
+            <Button variant="dangerSoft" icon={Trash2} className="me-auto" onClick={() => void remove()}>
+              {t('common.delete')}
             </Button>
           )}
           <Button variant="ghost" onClick={close}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button variant="brand" loading={busy} disabled={!valid} onClick={() => void save()}>
             {draft.mode === 'create'
-              ? `Add ${Math.max(1, draft.workerIds.length * draft.dates.length)} shift${draft.workerIds.length * draft.dates.length === 1 ? '' : 's'}`
-              : 'Save'}
+              ? t('manager.schedule.addCount', { count: Math.max(1, draft.workerIds.length * draft.dates.length) })
+              : t('common.save')}
           </Button>
         </>
       }
     >
       <div className="space-y-5">
         {draft.mode === 'create' && (
-          <Field label={`Who (${draft.workerIds.length} selected)`}>
+          <Field label={t('manager.schedule.who', { count: draft.workerIds.length })}>
             <div className="rounded-xl ring-1 ring-line">
               <div className="relative border-b border-line">
-                <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-faint" />
+                <Search className="absolute top-1/2 start-3 size-4 -translate-y-1/2 text-faint" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search"
-                  className="h-10 w-full rounded-t-xl bg-transparent pr-3 pl-9 text-sm outline-none"
+                  placeholder={t('common.search')}
+                  className="h-10 w-full rounded-t-xl bg-transparent pe-3 ps-9 text-sm outline-none"
                 />
               </div>
               <div className="max-h-52 overflow-y-auto p-1">
@@ -404,7 +415,7 @@ function ShiftDialog({
                       })
                     }
                   />
-                  Everyone{search ? ' shown' : ''}
+                  {search ? t('manager.schedule.everyoneShown') : t('manager.schedule.everyone')}
                 </label>
                 {filtered.map((w) => (
                   <label key={w.id} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-sm hover:bg-surface-2">
@@ -426,7 +437,7 @@ function ShiftDialog({
         )}
 
         {draft.mode === 'create' ? (
-          <Field label="Days">
+          <Field label={t('manager.schedule.days')}>
             <div className="grid grid-cols-7 gap-1.5">
               {weekDays.map((d) => {
                 const on = draft.dates.includes(d);
@@ -440,35 +451,36 @@ function ShiftDialog({
                       on ? 'bg-brand text-on-brand ring-brand' : 'bg-surface text-ink-2 ring-line hover:bg-surface-2',
                     )}
                   >
-                    <span>{fmtWeekday(d).slice(0, 3)}</span>
+                    <span>{fmtWeekday(d)}</span>
                     <span className="text-sm font-semibold">{d.slice(8)}</span>
                   </button>
                 );
               })}
             </div>
-            <div className="mt-2 flex gap-1">
+            {/* Named after the days they pick ("Mon – Fri"), so they stay right in every language and with any first weekday. */}
+            <div className="mt-2 flex flex-wrap gap-1">
               <Button size="xs" variant="soft" onClick={() => update({ dates: weekDays.slice(0, 5) })}>
-                Mon–Fri
+                {t('common.range', { from: fmtWeekday(weekDays[0]!), to: fmtWeekday(weekDays[4]!) })}
               </Button>
               <Button size="xs" variant="soft" onClick={() => update({ dates: weekDays.slice(0, 6) })}>
-                Mon–Sat
+                {t('common.range', { from: fmtWeekday(weekDays[0]!), to: fmtWeekday(weekDays[5]!) })}
               </Button>
               <Button size="xs" variant="soft" onClick={() => update({ dates: weekDays })}>
-                All week
+                {t('manager.schedule.allWeek')}
               </Button>
               <Button size="xs" variant="ghost" onClick={() => update({ dates: [] })}>
-                Clear
+                {t('manager.schedule.clear')}
               </Button>
             </div>
           </Field>
         ) : (
-          <Field label="Day">
+          <Field label={t('manager.schedule.day')}>
             <Input type="date" value={draft.date} onChange={(e) => update({ date: e.target.value })} />
           </Field>
         )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label="Workplace" className="sm:col-span-1">
+          <Field label={t('manager.shared.workplace')} className="sm:col-span-1">
             <Select value={draft.siteId} onChange={(e) => update({ siteId: Number(e.target.value) })}>
               {m.sites
                 .filter((s) => s.active || s.id === draft.siteId)
@@ -479,15 +491,21 @@ function ShiftDialog({
                 ))}
             </Select>
           </Field>
-          <Field label="Starts">
+          <Field label={t('manager.schedule.starts')}>
             <Input type="time" value={draft.start} onChange={(e) => update({ start: e.target.value })} />
           </Field>
-          <Field label="Ends" hint={overnight ? 'Ends the next day' : undefined}>
+          <Field label={t('manager.schedule.ends')} hint={overnight ? t('manager.schedule.nextDay') : undefined}>
             <Input type="time" value={draft.end} onChange={(e) => update({ end: e.target.value })} />
           </Field>
         </div>
-        <Field label="Note for the worker" optional>
-          <Textarea rows={2} maxLength={300} value={draft.note} onChange={(e) => update({ note: e.target.value })} placeholder="For example: bring safety boots" />
+        <Field label={t('manager.schedule.note')} optional>
+          <Textarea
+            rows={2}
+            maxLength={300}
+            value={draft.note}
+            onChange={(e) => update({ note: e.target.value })}
+            placeholder={t('manager.schedule.notePlaceholder')}
+          />
         </Field>
         {error && (
           <div className="rounded-xl bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
@@ -501,7 +519,7 @@ function ShiftDialog({
             )}
           </div>
         )}
-        <p className="text-xs text-faint">Times are in the workplace time zone ({tz}).</p>
+        <p className="text-xs text-faint">{tRich('manager.schedule.timeZone', { tz: <Ltr>{tz}</Ltr> })}</p>
       </div>
     </Dialog>
   );

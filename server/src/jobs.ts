@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { JobRun } from '../../shared/types';
 import type { AppConfig } from './config';
 import { setSetting, type DB } from './db';
+import { msg, renderStored, storeMsg, type Msg } from './i18n';
 import type { RateLimiter } from './lib/rate-limit';
 import { nowIso } from './lib/time';
 import { companySettings } from './services/companies';
@@ -20,8 +21,10 @@ interface JobDeps {
 
 interface JobDef {
   name: string;
+  /** Shown in the owner console and the change history. */
+  label: string;
   intervalMs: number;
-  run: (deps: JobDeps) => string | Promise<string>;
+  run: (deps: JobDeps) => Msg | Promise<Msg>;
 }
 
 const MINUTE = 60_000;
@@ -30,16 +33,18 @@ const HOUR = 60 * MINUTE;
 export const JOBS: JobDef[] = [
   {
     name: 'attendance',
+    label: 'Missing check-outs & presence checks',
     intervalMs: 5 * MINUTE,
     run: ({ db, push }) => {
       const now = nowIso();
       const closed = closeStaleEntries(db, now);
       const expired = expirePresenceChecks(db, push, now);
-      return `${closed} missing check-out(s) flagged, ${expired} presence check(s) expired`;
+      return msg('Missing check-outs flagged: {closed}. Presence checks expired: {expired}.', { closed, expired });
     },
   },
   {
     name: 'cleanup',
+    label: 'Clean-up (old photos, sessions, logs)',
     intervalMs: HOUR,
     run: ({ db, limiter }) => {
       const day = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
@@ -58,25 +63,33 @@ export const JOBS: JobDef[] = [
       limiter.prune(24 * HOUR);
       db.pragma('incremental_vacuum(5000)');
       db.pragma('optimize');
-      return `removed ${challenges} challenges, ${sessions} sessions, ${photos} photos, ${logs} logs, ${events} old alerts`;
+      return msg('Removed — one-time codes: {challenges}, sessions: {sessions}, photos: {photos}, logs: {logs}, old alerts: {events}.', {
+        challenges,
+        sessions,
+        photos,
+        logs,
+        events,
+      });
     },
   },
   {
     name: 'integrity',
+    label: 'Database health check',
     intervalMs: 24 * HOUR,
     run: ({ db }) => {
       const result = db.pragma('quick_check', { simple: true }) as string;
       setSetting(db, 'integrity', JSON.stringify({ at: nowIso(), result }));
       if (result !== 'ok') throw new Error(`Database integrity check failed: ${result}`);
-      return 'database ok';
+      return msg('Database OK');
     },
   },
   {
     name: 'backup',
+    label: 'Daily backup',
     intervalMs: 24 * HOUR,
     run: async ({ db, config }) => {
       const keep = Number(process.env.BACKUP_KEEP ?? 7);
-      if (config.dbFile === ':memory:' || keep <= 0) return 'skipped';
+      if (config.dbFile === ':memory:' || keep <= 0) return msg('Skipped');
       const dir = path.join(config.dataDir, 'backups');
       fs.mkdirSync(dir, { recursive: true });
       const file = path.join(dir, `onsite-${nowIso().slice(0, 10)}.db`);
@@ -88,10 +101,15 @@ export const JOBS: JobDef[] = [
         .reverse()
         .slice(keep);
       for (const f of old) fs.rmSync(path.join(dir, f));
-      return `saved ${path.basename(file)}, removed ${old.length} old backup(s)`;
+      return msg('Saved {file}. Old backups removed: {count}.', { file: path.basename(file), count: old.length });
     },
   },
 ];
+
+/** A job's name for people, in the reader's language. */
+export function jobLabel(name: string): Msg {
+  return msg(JOBS.find((j) => j.name === name)?.label ?? name);
+}
 
 export class JobRunner {
   private timers: NodeJS.Timeout[] = [];
@@ -130,16 +148,17 @@ export class JobRunner {
        ON CONFLICT(name) DO UPDATE SET last_started_at = excluded.last_started_at`,
     ).run(name, nowIso());
     try {
-      const message = await def.run(this.deps);
+      const message = storeMsg(await def.run(this.deps));
       db.prepare(
-        `UPDATE job_runs SET last_finished_at = ?, last_status = 'ok', last_message = ?, last_duration_ms = ?,
-           run_count = run_count + 1 WHERE name = ?`,
-      ).run(nowIso(), message, Date.now() - started, name);
+        `UPDATE job_runs SET last_finished_at = ?, last_status = 'ok', last_message = ?, last_message_i18n = ?,
+           last_duration_ms = ?, run_count = run_count + 1 WHERE name = ?`,
+      ).run(nowIso(), message.english, message.i18n, Date.now() - started, name);
     } catch (err) {
+      // Failures keep the technical error text for the owner.
       const message = err instanceof Error ? err.message : String(err);
       db.prepare(
-        `UPDATE job_runs SET last_finished_at = ?, last_status = 'error', last_message = ?, last_duration_ms = ?,
-           run_count = run_count + 1, fail_count = fail_count + 1 WHERE name = ?`,
+        `UPDATE job_runs SET last_finished_at = ?, last_status = 'error', last_message = ?, last_message_i18n = NULL,
+           last_duration_ms = ?, run_count = run_count + 1, fail_count = fail_count + 1 WHERE name = ?`,
       ).run(nowIso(), message, Date.now() - started, name);
       systemLog(db, 'error', `job:${name}`, message, { stack: err instanceof Error ? err.stack : undefined });
     } finally {
@@ -159,6 +178,7 @@ export class JobRunner {
       last_finished_at: string | null;
       last_status: string | null;
       last_message: string;
+      last_message_i18n: string | null;
       last_duration_ms: number | null;
       run_count: number;
       fail_count: number;
@@ -170,7 +190,7 @@ export class JobRunner {
         lastStartedAt: r?.last_started_at ?? null,
         lastFinishedAt: r?.last_finished_at ?? null,
         lastStatus: r?.last_status ?? null,
-        lastMessage: r?.last_message ?? '',
+        lastMessage: r ? renderStored(r.last_message, r.last_message_i18n) : '',
         lastDurationMs: r?.last_duration_ms ?? null,
         runCount: r?.run_count ?? 0,
         failCount: r?.fail_count ?? 0,

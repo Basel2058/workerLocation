@@ -3,8 +3,9 @@ import type { PunchChallenge, PunchOutcome, PunchPayload, SignedEnvelope } from 
 import { parseJson, type DB } from '../db';
 import type { CompanyRow, DeviceRow, EntryRow, ShiftRow, SiteRow, UserRow } from '../db/rows';
 import { randomToken, sha256Hex, verifyDeviceSignature, type EcPublicJwk } from '../lib/crypto';
+import { msg, tr } from '../i18n';
 import { badRequest, conflict } from '../lib/errors';
-import { dayRange, localTime, minutesBetween, nowIso, todayLocal } from '../lib/time';
+import { dayRange, minutesBetween, nowIso, todayLocal } from '../lib/time';
 import { consumeChallenge, createChallenge, decideSelfie } from './challenges';
 import { companySettings, listSites } from './companies';
 import { requireUsableDevice } from './devices';
@@ -62,7 +63,7 @@ export function verifySignedPayload(ctx: PunchContext, device: DeviceRow, envelo
       userId: ctx.user.id,
       kind: 'bad_signature',
       severity: 'high',
-      message: `A check-in for ${ctx.user.full_name} had an invalid phone signature (tampered request).`,
+      message: msg('A check-in for {name} had an invalid phone signature (tampered request).', { name: ctx.user.full_name }),
       ip: ctx.ip,
     });
     throw badRequest('This request could not be verified.', 'BAD_SIGNATURE');
@@ -160,32 +161,40 @@ export function issuePunchChallenge(ctx: PunchContext, type: 'in' | 'out', keyId
   return { nonce: challenge.nonce, expiresAt: challenge.expires_at, requireSelfie };
 }
 
-const formatDistance = (m: number) => (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${Math.round(m)} m`);
 
 function outcomeMessage(type: 'in' | 'out', risk: RiskResult, shift: ShiftRow | null, tz: string): string {
-  const site = risk.site?.name ?? 'your workplace';
-  if (risk.result === 'accepted') return type === 'in' ? `Checked in at ${site}` : `Checked out from ${site}`;
+  const site = risk.site?.name;
+  if (risk.result === 'accepted') {
+    if (!site) return type === 'in' ? tr('Checked in') : tr('Checked out');
+    return type === 'in' ? tr('Checked in at {site}', { site }) : tr('Checked out from {site}', { site });
+  }
   if (risk.result === 'review') {
     return type === 'in'
-      ? 'Checked in. Your manager will confirm this check-in.'
-      : 'Checked out. Your manager will confirm this check-out.';
+      ? tr('Checked in. Your manager will confirm this check-in.')
+      : tr('Checked out. Your manager will confirm this check-out.');
   }
   switch (risk.reason) {
     case 'OUTSIDE_GEOFENCE':
-      return `You are ${formatDistance(risk.distanceM ?? 0)} from ${site}. Go to your workplace and try again.`;
+      return site
+        ? tr('You are {distance} from {site}. Go to your workplace and try again.', { distance: { meters: risk.distanceM ?? 0 }, site })
+        : tr('You are {distance} from your workplace. Go to your workplace and try again.', { distance: { meters: risk.distanceM ?? 0 } });
     case 'LOW_ACCURACY':
-      return `Your location is not precise enough (±${Math.round(risk.best?.acc ?? 0)} m). Turn on precise location, step outside or near a window, and try again.`;
+      return tr('Your location is not precise enough (±{accuracy}). Turn on precise location, step outside or near a window, and try again.', {
+        accuracy: { meters: risk.best?.acc ?? 0 },
+      });
     case 'STALE_LOCATION':
     case 'NO_LOCATION':
-      return 'We could not get a fresh location from your phone. Please try again.';
+      return tr('We could not get a fresh location from your phone. Please try again.');
     case 'NETWORK_REQUIRED':
-      return `Connect to the ${site} Wi-Fi and try again.`;
+      return site ? tr('Connect to the {site} Wi-Fi and try again.', { site }) : tr('Connect to the workplace Wi-Fi and try again.');
     case 'NO_SITES':
-      return 'No workplace is set up for your company yet. Please contact your manager.';
+      return tr('No workplace is set up for your company yet. Please contact your manager.');
     case 'NO_SHIFT':
-      return shift ? `Your shift starts at ${localTime(shift.starts_at, tz)}.` : 'You do not have a shift right now.';
+      return shift
+        ? tr('Your shift starts at {time}.', { time: { at: shift.starts_at, tz, style: 'time' } })
+        : tr('You do not have a shift right now.');
     default:
-      return 'This could not be verified. Please talk to your manager.';
+      return tr('This could not be verified. Please talk to your manager.');
   }
 }
 
@@ -351,7 +360,10 @@ function persist(
         userId: user.id,
         kind: 'suspicious_punch',
         severity: 'high',
-        message: `Blocked a suspicious check-${type} by ${user.full_name}.`,
+        message:
+          type === 'in'
+            ? msg('Blocked a suspicious check-in by {name}.', { name: user.full_name })
+            : msg('Blocked a suspicious check-out by {name}.', { name: user.full_name }),
         details: { punchId, flags: risk.flags, score: risk.score, reason: risk.reason },
         ip: ctx.ip,
       });
@@ -370,7 +382,10 @@ function persist(
           userId: user.id,
           kind: 'repeated_rejections',
           severity: 'warn',
-          message: `${user.full_name} had ${recent} failed check-${type} attempts in 15 minutes.`,
+          message:
+            type === 'in'
+              ? msg('{name} had {count} failed check-in attempts in 15 minutes.', { name: user.full_name, count: recent })
+              : msg('{name} had {count} failed check-out attempts in 15 minutes.', { name: user.full_name, count: recent }),
           details: { punchId, lastReason: risk.reason, distanceM: risk.distanceM },
           ip: ctx.ip,
         });

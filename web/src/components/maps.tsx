@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import type { LiveRow, Site } from '../../../shared/types';
 import { usePublicConfig } from '../lib/auth';
 import { initials } from '../lib/format';
+import { t } from '../lib/i18n';
 import { cx } from './ui';
 
 // Leaflet maps (OpenStreetMap tiles by default; MAP_TILE_URL on the server can point elsewhere).
@@ -118,7 +119,10 @@ export function LiveMap({
     }
   }, [sites, rows, ready, mapRef, layerRef]);
 
-  return <div ref={el} className={cx('isolate overflow-hidden rounded-2xl ring-1 ring-line', className)} role="region" aria-label="Map" />;
+  // Leaflet lays out tiles and controls left-to-right; labels inside handle their own direction (styles.css).
+  return (
+    <div ref={el} dir="ltr" className={cx('isolate overflow-hidden rounded-2xl ring-1 ring-line', className)} role="region" aria-label={t('ui.map.label')} />
+  );
 }
 
 /** A small read-only map showing one reported position and the workplace around it. */

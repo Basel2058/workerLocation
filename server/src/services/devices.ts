@@ -8,6 +8,7 @@ import type {
 } from '../../../shared/types';
 import type { DB } from '../db';
 import type { CompanyRow, DeviceRow, UserRow } from '../db/rows';
+import { msg } from '../i18n';
 import { isEcPublicJwk, jwkThumbprint, sha256Hex, verifyDeviceSignature, type EcPublicJwk } from '../lib/crypto';
 import { AppError, badRequest, conflict, forbidden, notFound } from '../lib/errors';
 import { nowIso } from '../lib/time';
@@ -175,7 +176,9 @@ export function registerDevice(ctx: RegisterContext, envelope: SignedEnvelope): 
       userId: user.id,
       kind: 'device_conflict',
       severity: 'high',
-      message: `${user.full_name}'s account was used on the phone of ${owner?.full_name ?? 'another worker'}.`,
+      message: owner
+        ? msg('{name}’s account was used on the phone of {owner}.', { name: user.full_name, owner: owner.full_name })
+        : msg('{name}’s account was used on the phone of another worker.', { name: user.full_name }),
       details: { ownerId: otherOwnerId, ownerName: owner?.full_name, userAgent: ctx.userAgent },
       ip: ctx.ip,
     });
@@ -267,7 +270,10 @@ export function decideDevice(db: DB, actor: Actor, device: DeviceRow, decision: 
       companyId: device.company_id,
       entity: 'device',
       entityId: device.id,
-      summary: `${decision === 'approve' ? 'Approved' : 'Rejected'} phone "${device.label}" for ${worker.full_name}`,
+      summary:
+        decision === 'approve'
+          ? msg('Approved phone “{phone}” for {name}', { phone: device.label, name: worker.full_name })
+          : msg('Rejected phone “{phone}” for {name}', { phone: device.label, name: worker.full_name }),
       details: { userId: device.user_id },
     });
   })();
@@ -285,7 +291,7 @@ export function revokeDevice(db: DB, actor: Actor, device: DeviceRow): void {
     companyId: device.company_id,
     entity: 'device',
     entityId: device.id,
-    summary: `Removed phone "${device.label}" from ${worker.full_name}`,
+    summary: msg('Removed phone “{phone}” from {name}', { phone: device.label, name: worker.full_name }),
     details: { userId: device.user_id, previousStatus: device.status },
   });
 }

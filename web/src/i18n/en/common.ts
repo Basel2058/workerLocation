@@ -1,0 +1,48 @@
+// Words used all over the app. Area catalogs (worker, manager, dev) hold everything else.
+export const common = {
+  cancel: 'Cancel',
+  save: 'Save',
+  saving: 'Saving…',
+  close: 'Close',
+  done: 'Done',
+  delete: 'Delete',
+  edit: 'Edit',
+  back: 'Back',
+  next: 'Next',
+  confirm: 'Confirm',
+  tryAgain: 'Try again',
+  loading: 'Loading',
+  optional: 'Optional',
+  search: 'Search',
+  copy: 'Copy',
+  copied: '{what} copied',
+  copyFailed: 'Copy did not work — select the text instead.',
+  yes: 'Yes',
+  no: 'No',
+  on: 'On',
+  off: 'Off',
+  all: 'All',
+  none: 'None',
+  more: 'More',
+  call: 'Call',
+  today: 'Today',
+  tomorrow: 'Tomorrow',
+  yesterday: 'Yesterday',
+  now: 'now',
+  never: 'never',
+  unknown: 'Unknown',
+  /** Shown when a value is missing. */
+  empty: '—',
+  somethingWrong: 'Something went wrong.',
+  /** Joins a list of items: "a · b". */
+  separator: ' · ',
+  /** A time range, e.g. "8:00 AM – 4:00 PM". */
+  range: '{from} – {to}',
+  /** From one moment to the next, e.g. "8:34 AM → 4:02 PM". RTL languages point the arrow the other way. */
+  arrow: '{from} → {to}',
+  roles: {
+    worker: 'Worker',
+    manager: 'Manager',
+    developer: 'Owner',
+  },
+};

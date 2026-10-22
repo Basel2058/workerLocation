@@ -1,12 +1,14 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import QRCode from 'qrcode';
 import { z } from 'zod';
+import { LOCALES } from '../../../shared/i18n';
 import type { LoginResponse, MeResponse } from '../../../shared/types';
 import { getDummyHash, hashPassword, passwordProblem, verifyPassword } from '../auth/password';
 import { completeMfa, createSession, revokeSession, revokeUserSessions, SESSION_COOKIE, sessionTtlMs } from '../auth/sessions';
 import { generateTotpSecret, otpauthUrl, verifyTotp } from '../auth/totp';
 import type { CompanyRow, UserRow } from '../db/rows';
 import { actorOf, rateLimit, requireAuth } from '../http';
+import { msg, tr } from '../i18n';
 import { AppError, badRequest, forbidden, unauthorized } from '../lib/errors';
 import { nowIso } from '../lib/time';
 import { audit, securityEvent } from '../services/logs';
@@ -47,12 +49,17 @@ export default async function authRoutes(app: FastifyInstance) {
     const invalid = () => new AppError(401, 'INVALID_CREDENTIALS', 'Wrong username or password.');
     if (!user) {
       await verifyPassword(body.password, await getDummyHash());
-      securityEvent(db, { kind: 'login_failed', severity: 'info', message: `Sign-in with unknown username "${username}"`, ip: req.ip });
+      securityEvent(db, {
+        kind: 'login_failed',
+        severity: 'info',
+        message: msg('Sign-in with unknown username “{username}”', { username }),
+        ip: req.ip,
+      });
       throw invalid();
     }
     if (isLocked(user)) {
       const minutes = Math.max(1, Math.ceil((Date.parse(user.locked_until!) - Date.now()) / 60_000));
-      throw new AppError(429, 'ACCOUNT_LOCKED', `Too many wrong passwords. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`);
+      throw new AppError(429, 'ACCOUNT_LOCKED', tr('Too many wrong passwords. Try again in {count} minutes.', { count: minutes }));
     }
     if (!(await verifyPassword(body.password, user.password_hash))) {
       const failed = user.failed_logins + 1;
@@ -68,8 +75,12 @@ export default async function authRoutes(app: FastifyInstance) {
         kind: lock ? 'account_locked' : 'login_failed',
         severity: lock ? 'warn' : 'info',
         message: lock
-          ? `${user.full_name}'s account was locked for ${LOCK_MINUTES} minutes after ${MAX_FAILED_LOGINS} wrong passwords.`
-          : `Wrong password for ${user.full_name}.`,
+          ? msg('{name}’s account was locked for {minutes} minutes after {count} wrong passwords.', {
+              name: user.full_name,
+              minutes: LOCK_MINUTES,
+              count: MAX_FAILED_LOGINS,
+            })
+          : msg('Wrong password for {name}.', { name: user.full_name }),
         ip: req.ip,
       });
       throw invalid();
@@ -118,6 +129,14 @@ export default async function authRoutes(app: FastifyInstance) {
     return { user: toSessionUser(auth.user, auth.company) };
   });
 
+  // The language the person uses; notifications and messages to them follow it.
+  app.post('/api/auth/locale', async (req) => {
+    const auth = requireAuth(req, { allowPasswordChange: true });
+    const { locale } = z.object({ locale: z.enum(LOCALES) }).parse(req.body);
+    db.prepare('UPDATE users SET locale = ? WHERE id = ?').run(locale, auth.user.id);
+    return { ok: true };
+  });
+
   app.post('/api/auth/change-password', async (req) => {
     const auth = requireAuth(req, { allowPasswordChange: true });
     const body = z.object({ currentPassword: z.string().max(200), newPassword: z.string().max(200) }).parse(req.body);
@@ -136,7 +155,7 @@ export default async function authRoutes(app: FastifyInstance) {
       companyId: auth.user.company_id,
       entity: 'user',
       entityId: auth.user.id,
-      summary: `${auth.user.full_name} changed their password`,
+      summary: msg('{name} changed their password', { name: auth.user.full_name }),
     });
     return { ok: true };
   });
@@ -165,7 +184,7 @@ export default async function authRoutes(app: FastifyInstance) {
       companyId: auth.user.company_id,
       entity: 'user',
       entityId: auth.user.id,
-      summary: `${auth.user.full_name} turned on two-step sign-in`,
+      summary: msg('{name} turned on two-step sign-in', { name: auth.user.full_name }),
     });
     return { ok: true };
   });
@@ -180,7 +199,7 @@ export default async function authRoutes(app: FastifyInstance) {
       companyId: auth.user.company_id,
       entity: 'user',
       entityId: auth.user.id,
-      summary: `${auth.user.full_name} turned off two-step sign-in`,
+      summary: msg('{name} turned off two-step sign-in', { name: auth.user.full_name }),
     });
     return { ok: true };
   });

@@ -6,6 +6,7 @@ import { AppShell } from '../../components/AppShell';
 import { ButtonLink, ErrorBox, PageLoader } from '../../components/ui';
 import { get } from '../../lib/api';
 import { useUser } from '../../lib/auth';
+import { t, tRich } from '../../lib/i18n';
 import { AccountPage } from '../Account';
 import { ManagerProvider, useManagerValue } from './context';
 import { HoursPage } from './Hours';
@@ -41,27 +42,25 @@ export default function ManagerApp({ base, companyId }: { base: string; companyI
 
   const company = overview.data.company;
   const items = [
-    { to: base, label: 'Live', icon: MapPinned, end: true },
-    { to: `${base}/requests`, label: 'Requests', icon: Inbox, badge: overview.data.pendingReviews },
-    { to: `${base}/schedule`, label: 'Schedule', icon: CalendarDays },
-    { to: `${base}/hours`, label: 'Hours', icon: Clock3 },
-    { to: `${base}/team`, label: 'Team', icon: Users },
+    { to: base, label: t('manager.nav.live'), icon: MapPinned, end: true },
+    { to: `${base}/requests`, label: t('manager.nav.requests'), icon: Inbox, badge: overview.data.pendingReviews },
+    { to: `${base}/schedule`, label: t('manager.nav.schedule'), icon: CalendarDays },
+    { to: `${base}/hours`, label: t('manager.nav.hours'), icon: Clock3 },
+    { to: `${base}/team`, label: t('manager.nav.team'), icon: Users },
   ];
 
   const banner = companyId ? (
     <div className="flex items-center justify-between gap-3 border-b border-violet-500/20 bg-violet-500/10 px-4 py-2 text-[13px] text-violet-800 sm:px-6 lg:px-8 dark:text-violet-200">
-      <span className="truncate">
-        Developer view of <b>{company.name}</b> — changes are logged under your name.
-      </span>
+      <span className="truncate">{tRich('manager.shell.ownerBanner', { company: <b>{company.name}</b> })}</span>
       <ButtonLink to={`/dev/companies/${companyId}`} size="xs" variant="secondary" icon={ArrowLeft}>
-        Console
+        {t('manager.shell.backToConsole')}
       </ButtonLink>
     </div>
   ) : null;
 
   return (
     <ManagerProvider value={value}>
-      <AppShell title={company.name} subtitle={companyId ? 'Developer view' : 'Manager'} items={items} accountTo={`${base}/account`} banner={banner}>
+      <AppShell title={company.name} subtitle={companyId ? t('manager.shell.ownerSubtitle') : t('common.roles.manager')} items={items} accountTo={`${base}/account`} banner={banner}>
         <Routes>
           <Route index element={<LivePage />} />
           <Route path="requests" element={<RequestsPage />} />

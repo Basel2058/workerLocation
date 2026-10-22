@@ -2,8 +2,9 @@
 
 /* Design tokens. Components use these semantic colors so light and dark mode stay consistent. */
 @theme {
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif;
+  /* Inter for Latin text; Arabic and Hebrew letters fall through to Noto, which is only downloaded when used. */
+  --font-sans: 'Inter Variable', 'Noto Sans Hebrew Variable', 'Noto Sans Arabic Variable', ui-sans-serif, system-ui,
+    -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
 
   --color-bg: #f5f6f8;
   --color-surface: #ffffff;
@@ -135,6 +136,18 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  /* Arabic letters join; letter-spacing would tear words apart. */
+  :lang(ar) * {
+    letter-spacing: normal !important;
+  }
+  :lang(ar) body {
+    line-height: 1.6;
+  }
+  /* Arrows and chevrons point the other way in right-to-left languages. */
+  [dir='rtl'] :is(.lucide-arrow-left, .lucide-arrow-right, .lucide-chevron-left, .lucide-chevron-right, .lucide-log-in,
+      .lucide-log-out, .lucide-external-link, .lucide-send, .lucide-rotate-ccw, .lucide-list) {
+    scale: -1 1;
+  }
 }
 
 @utility safe-bottom {
@@ -150,10 +163,14 @@
   }
 }
 
-/* Leaflet tweaks so the map matches the app. */
+/* Leaflet tweaks so the map matches the app. Maps stay left-to-right (see maps.tsx); labels follow their text. */
 .leaflet-container {
   font: inherit;
   background: var(--color-surface-2);
+}
+.leaflet-container .site-label,
+.leaflet-container .leaflet-popup-content {
+  unicode-bidi: plaintext;
 }
 .leaflet-popup-content-wrapper {
   border-radius: 14px;

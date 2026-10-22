@@ -7,20 +7,23 @@ import { Avatar, Badge, ButtonLink, Card, cx, EmptyState, ErrorBox, IconButton, 
 import { qs } from '../../lib/api';
 import { fmtFullDate, fmtRelative, telHref } from '../../lib/format';
 import { useIsDesktop, useNow, usePageVisible, useStoredState } from '../../lib/hooks';
+import { t, tRich } from '../../lib/i18n';
 import { useManager } from './context';
 import { PersonSheet } from './PersonSheet';
-import { shiftLine, STATUS_META, statusBadge, statusDetail } from './status';
+import { shiftLine, STATUS_TONE, statusBadge, statusDetail } from './status';
 
 type Filter = 'all' | 'on_site' | 'missing' | 'late_arrivals' | 'upcoming' | 'checked_out';
 
-const GROUPS: Array<{ title: string; statuses: LiveStatus[] }> = [
-  { title: 'Not arrived', statuses: ['late'] },
-  { title: 'Forgot to check out', statuses: ['missing_checkout'] },
-  { title: 'On site', statuses: ['on_site'] },
-  { title: 'Coming later', statuses: ['upcoming'] },
-  { title: 'Absent', statuses: ['absent'] },
-  { title: 'Checked out', statuses: ['checked_out'] },
-];
+function groups(): Array<{ title: string; statuses: LiveStatus[] }> {
+  return [
+    { title: t('manager.live.groups.notArrived'), statuses: ['late'] },
+    { title: t('manager.live.groups.forgotCheckout'), statuses: ['missing_checkout'] },
+    { title: t('manager.live.groups.onSite'), statuses: ['on_site'] },
+    { title: t('manager.live.groups.comingLater'), statuses: ['upcoming'] },
+    { title: t('manager.live.groups.absent'), statuses: ['absent'] },
+    { title: t('manager.live.groups.checkedOut'), statuses: ['checked_out'] },
+  ];
+}
 
 function matches(row: LiveRow, filter: Filter): boolean {
   switch (filter) {
@@ -67,13 +70,13 @@ export function LivePage() {
     <div className="animate-fade-up">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight sm:text-2xl">Today</h1>
+          <h1 className="text-[22px] font-semibold tracking-tight sm:text-2xl">{t('common.today')}</h1>
           <p className="mt-0.5 text-sm text-muted">{fmtFullDate(data.now, data.timezone)}</p>
         </div>
         <div className="flex items-center gap-2">
           {m.sites.length > 1 && (
-            <Select value={siteId} onChange={(e) => setSiteId(Number(e.target.value))} className="w-auto min-w-40" aria-label="Site">
-              <option value={0}>All sites</option>
+            <Select value={siteId} onChange={(e) => setSiteId(Number(e.target.value))} className="w-auto min-w-40" aria-label={t('manager.live.site')}>
+              <option value={0}>{t('manager.live.allSites')}</option>
               {m.sites.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
@@ -81,18 +84,26 @@ export function LivePage() {
               ))}
             </Select>
           )}
-          <span className="hidden text-xs text-faint sm:inline">Updated {fmtRelative(new Date(live.dataUpdatedAt).toISOString(), now)}</span>
-          <IconButton icon={RefreshCw} label="Refresh" variant="secondary" onClick={() => void live.refetch()} className={live.isFetching ? '[&_svg]:animate-spin' : ''} />
+          <span className="hidden text-xs text-faint sm:inline">
+            {t('manager.live.updated', { time: fmtRelative(new Date(live.dataUpdatedAt).toISOString(), now) })}
+          </span>
+          <IconButton icon={RefreshCw} label={t('manager.live.refresh')} variant="secondary" onClick={() => void live.refetch()} className={live.isFetching ? '[&_svg]:animate-spin' : ''} />
         </div>
       </div>
 
       <div className="-mx-4 mb-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
         {[
-          { f: 'on_site' as Filter, label: 'On site', value: c.onSite, tone: 'green' as const, hint: `of ${c.total} today` },
-          { f: 'missing' as Filter, label: 'Not arrived', value: c.late + c.absent, tone: 'red' as const, hint: c.absent ? `${c.absent} absent` : 'shift already started' },
-          { f: 'late_arrivals' as Filter, label: 'Came late', value: c.lateArrivals, tone: 'amber' as const, hint: 'arrived after start' },
-          { f: 'upcoming' as Filter, label: 'Coming later', value: c.upcoming, tone: 'blue' as const, hint: 'shift not started' },
-          { f: 'checked_out' as Filter, label: 'Checked out', value: c.checkedOut, tone: 'gray' as const, hint: 'finished' },
+          { f: 'on_site' as Filter, label: t('manager.live.groups.onSite'), value: c.onSite, tone: 'green' as const, hint: t('manager.live.stats.onSiteHint', { total: c.total }) },
+          {
+            f: 'missing' as Filter,
+            label: t('manager.live.groups.notArrived'),
+            value: c.late + c.absent,
+            tone: 'red' as const,
+            hint: c.absent ? t('manager.live.stats.absentHint', { count: c.absent }) : t('manager.live.stats.startedHint'),
+          },
+          { f: 'late_arrivals' as Filter, label: t('manager.live.stats.cameLate'), value: c.lateArrivals, tone: 'amber' as const, hint: t('manager.live.stats.cameLateHint') },
+          { f: 'upcoming' as Filter, label: t('manager.live.groups.comingLater'), value: c.upcoming, tone: 'blue' as const, hint: t('manager.live.stats.comingLaterHint') },
+          { f: 'checked_out' as Filter, label: t('manager.live.groups.checkedOut'), value: c.checkedOut, tone: 'gray' as const, hint: t('manager.live.stats.checkedOutHint') },
         ].map((s) => (
           <div key={s.f} className="w-40 shrink-0 snap-start sm:w-auto">
             <Stat label={s.label} value={s.value} tone={s.tone} hint={s.hint} active={filter === s.f} onClick={() => toggle(s.f)} />
@@ -101,14 +112,14 @@ export function LivePage() {
       </div>
 
       {attention > 0 && (
-        <ButtonLink to={`${m.base}/requests`} variant="secondary" block className="mb-4 h-auto justify-between rounded-2xl px-4 py-3 text-left">
+        <ButtonLink to={`${m.base}/requests`} variant="secondary" block className="mb-4 h-auto justify-between rounded-2xl px-4 py-3 text-start">
           <span className="flex items-center gap-3">
             <span className="grid size-9 place-items-center rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
               <Inbox className="size-5" />
             </span>
             <span>
-              <span className="block font-semibold text-ink">{attention} need{attention === 1 ? 's' : ''} your attention</span>
-              <span className="block text-[13px] font-normal text-muted">Check-ins to confirm or missing check-outs</span>
+              <span className="block font-semibold text-ink">{t('manager.live.attention', { count: attention })}</span>
+              <span className="block text-[13px] font-normal text-muted">{t('manager.live.attentionHint')}</span>
             </span>
           </span>
           <ChevronRight className="size-5 text-faint" />
@@ -121,8 +132,8 @@ export function LivePage() {
           value={view}
           onChange={setView}
           options={[
-            { value: 'list', label: 'List', icon: List },
-            { value: 'map', label: 'Map', icon: MapIcon },
+            { value: 'list', label: t('manager.live.list'), icon: List },
+            { value: 'map', label: t('manager.live.map'), icon: MapIcon },
           ]}
         />
       )}
@@ -132,11 +143,9 @@ export function LivePage() {
           <div className="min-w-0">
             {filter !== 'all' && (
               <div className="mb-3 flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2 text-sm">
-                <span className="text-ink-2">
-                  Showing <b>{rows.length}</b> of {data.rows.length}
-                </span>
+                <span className="text-ink-2">{tRich('manager.live.showing', { shown: <b>{rows.length}</b>, total: data.rows.length })}</span>
                 <button className="font-medium text-brand" onClick={() => setFilter('all')}>
-                  Show all
+                  {t('manager.live.showAll')}
                 </button>
               </div>
             )}
@@ -144,20 +153,24 @@ export function LivePage() {
               <Card>
                 <EmptyState
                   icon={Users}
-                  title="Nobody is scheduled today"
-                  body="Shifts you plan show up here, together with anyone who checks in."
-                  action={<ButtonLink to={`${m.base}/schedule`} variant="brand">Plan shifts</ButtonLink>}
+                  title={t('manager.live.emptyTitle')}
+                  body={t('manager.live.emptyBody')}
+                  action={
+                    <ButtonLink to={`${m.base}/schedule`} variant="brand">
+                      {t('manager.live.planShifts')}
+                    </ButtonLink>
+                  }
                 />
               </Card>
             ) : (
               <div className="space-y-5">
-                {GROUPS.map((g) => {
+                {groups().map((g) => {
                   const list = rows.filter((r) => g.statuses.includes(r.status));
                   if (list.length === 0) return null;
                   return (
                     <section key={g.title}>
                       <h2 className="mb-2 flex items-center gap-2 px-1 text-[13px] font-semibold text-muted">
-                        <span className={cx('size-2 rounded-full', toneDot[STATUS_META[g.statuses[0]!].tone])} />
+                        <span className={cx('size-2 rounded-full', toneDot[STATUS_TONE[g.statuses[0]!]])} />
                         {g.title} <span className="font-normal text-faint">{list.length}</span>
                       </h2>
                       <Card className="divide-y divide-line overflow-hidden">
@@ -175,9 +188,7 @@ export function LivePage() {
         {(isDesktop || view === 'map') && (
           <div className="min-w-0 lg:sticky lg:top-6 lg:self-start">
             <LiveMap sites={sites} rows={data.rows} onSelect={select} className="h-[60dvh] min-h-[360px] lg:h-[calc(100dvh-170px)]" />
-            <p className="mt-2 px-1 text-xs text-faint">
-              Dots show where people checked in or last confirmed. People who have not arrived are not on the map — call them from the list.
-            </p>
+            <p className="mt-2 px-1 text-xs text-faint">{t('manager.live.mapHint')}</p>
           </div>
         )}
       </div>
@@ -189,20 +200,20 @@ export function LivePage() {
 
 function LiveRowItem({ row, tz, selected, onClick }: { row: LiveRow; tz: string; selected: boolean; onClick: () => void }) {
   const badge = statusBadge(row, tz);
-  const ringTone = STATUS_META[row.status].tone;
+  const ringTone = STATUS_TONE[row.status];
   return (
     <div className={cx('flex items-center gap-3 px-3 py-3 transition-colors sm:px-4', selected ? 'bg-brand-soft/60' : 'hover:bg-surface-2/70')}>
-      <button onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+      <button onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-start">
         <Avatar name={row.worker.name} size={42} ring={ringTone} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="truncate font-medium text-ink">{row.worker.name}</p>
-            {row.needsReview && <Badge tone="violet">Check</Badge>}
+            {row.needsReview && <Badge tone="violet">{t('manager.live.needsCheck')}</Badge>}
             {row.flags.length > 0 && !row.needsReview && <Badge tone="amber">!</Badge>}
           </div>
           <p className="truncate text-[13px] text-muted">{shiftLine(row, tz)}</p>
         </div>
-        <div className="hidden shrink-0 flex-col items-end gap-1 text-right sm:flex">
+        <div className="hidden shrink-0 flex-col items-end gap-1 text-end sm:flex">
           <Badge tone={badge.tone}>{badge.text}</Badge>
           <span className="tabular text-xs text-muted">{statusDetail(row, tz)}</span>
         </div>
@@ -217,8 +228,9 @@ function LiveRowItem({ row, tz, selected, onClick }: { row: LiveRow; tz: string;
             'grid size-10 shrink-0 place-items-center rounded-full transition-colors',
             row.status === 'late' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-surface-2 text-ink-2 hover:bg-surface-3',
           )}
-          aria-label={`Call ${row.worker.name}`}
-          title={`Call ${row.worker.phone}`}
+          aria-label={t('manager.shared.callName', { name: row.worker.name })}
+          // A tooltip is plain text: the isolate marks (LRI…PDI) keep "+972 50 …" in order in right-to-left languages.
+          title={t('manager.shared.callPhone', { phone: `\u2066${row.worker.phone}\u2069` })}
         >
           <Phone className="size-[18px]" />
         </a>

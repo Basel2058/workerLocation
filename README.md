@@ -6,6 +6,7 @@ You, the owner, run the platform: you create companies, managers and workers, fi
 whether everything is working.
 
 It is a web app that installs on phones like a normal app (PWA) — no app store needed.
+Available in **English, Arabic and Hebrew** (right-to-left layout included).
 
 ## What each person gets
 
@@ -28,6 +29,19 @@ It is a web app that installs on phones like a normal app (PWA) — no app store
 - Health overview, background jobs, error log (server *and* workers' phones), security alerts, full change history,
   every check-in with its evidence (GPS readings, photo, phone, network), active sessions, one-click database backup.
 - Open any company's manager dashboard to help or fix things — every change is logged under your name.
+
+## Languages
+
+- Everyone can switch between English, العربية and עברית: on the sign-in screen (top corner), on the worker's
+  **Me** page and in **Account settings**. The choice is saved on the account, so check-in results, error messages,
+  alerts, change history, push notifications and CSV exports all come in that language.
+- New phones start in the phone's own language. The owner can also pick a language for each account when creating it,
+  and set a default language per company (used for login messages sent on WhatsApp and for notifications to people who
+  never chose one).
+- Arabic and Hebrew use a right-to-left layout and Western digits (0-9). Each company also sets the first day of the
+  week (Sunday, Monday or Saturday) for schedules and weekly hours.
+- Translators: see `web/src/i18n/README.md` (guide and glossary) and `server/src/i18n/` (server texts). The tests fail
+  when a server text has no Arabic or Hebrew translation.
 
 ## How cheating is prevented
 

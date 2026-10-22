@@ -1,3 +1,6 @@
+import { tr } from '../i18n';
+
+/** An error shown to the user. The English message is translated into the request's language. */
 export class AppError extends Error {
   constructor(
     readonly statusCode: number,
@@ -5,7 +8,7 @@ export class AppError extends Error {
     message: string,
     readonly details?: unknown,
   ) {
-    super(message);
+    super(tr(message));
     this.name = 'AppError';
   }
 }
@@ -18,5 +21,5 @@ export const forbidden = (message = 'You do not have access to this.', code = 'F
 export const notFound = (message = 'Not found.', code = 'NOT_FOUND') => new AppError(404, code, message);
 export const conflict = (message: string, code = 'CONFLICT', details?: unknown) =>
   new AppError(409, code, message, details);
-export const tooMany = (message: string, retryAfterSec?: number) =>
+export const tooMany = (message: string, retryAfterSec?: number): AppError =>
   new AppError(429, 'RATE_LIMITED', message, retryAfterSec ? { retryAfterSec } : undefined);

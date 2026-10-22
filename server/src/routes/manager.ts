@@ -15,6 +15,7 @@ import type {
 import { parseJson } from '../db';
 import type { PunchRow } from '../db/rows';
 import { companyScope, idParam, rateLimit, requireAuth } from '../http';
+import { renderStored, tr } from '../i18n';
 import { badRequest, forbidden, notFound } from '../lib/errors';
 import { addDays, dateSpanRange, isValidClock, isValidDate, localDateTimeToUtc, nowIso, todayLocal } from '../lib/time';
 import { listSites, toCompany, toSite } from '../services/companies';
@@ -45,13 +46,13 @@ function dateRange(req: FastifyRequest, tz: string, maxDays = 370) {
   const from = q.from ?? addDays(today, -6);
   const to = q.to ?? today;
   if (to < from) throw badRequest('The end date is before the start date.');
-  if (Date.parse(to) - Date.parse(from) > maxDays * 86_400_000) throw badRequest(`Choose at most ${maxDays} days.`);
+  if (Date.parse(to) - Date.parse(from) > maxDays * 86_400_000) throw badRequest(tr('Choose at most {count} days.', { count: maxDays }));
   return { from, to, ...dateSpanRange(from, to, tz) };
 }
 
 function localInstant(value: string, tz: string, label: string): string {
   const iso = localDateTimeToUtc(value, tz);
-  if (!iso) throw badRequest(`Invalid ${label}.`);
+  if (!iso) throw badRequest('Invalid date or time.', 'BAD_REQUEST', { field: label });
   return iso;
 }
 
@@ -365,6 +366,7 @@ export interface AuditRow {
   entity: string;
   entity_id: string;
   summary: string;
+  summary_i18n: string | null;
   details: string;
   ip: string;
 }
@@ -381,7 +383,7 @@ export function pageAudit(rows: AuditRow[], limit: number): Paged<AuditEntry> {
     action: r.action,
     entity: r.entity,
     entityId: r.entity_id,
-    summary: r.summary,
+    summary: renderStored(r.summary, r.summary_i18n),
     details: parseJson<Record<string, unknown>>(r.details, {}),
     ip: r.ip,
   }));

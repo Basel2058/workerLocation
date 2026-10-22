@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import type { DevOverview, HealthCheck, SystemLog } from '../../../shared/types';
 import { parseJson, setSetting } from '../db';
 import type { Ctx } from '../http';
+import { tr, trMsg } from '../i18n';
+import { jobLabel } from '../jobs';
 import { nowIso } from '../lib/time';
 import { EVENT_SELECT, toSecurityEvent } from './reviews';
 
@@ -52,9 +54,9 @@ export function getDevOverview(ctx: Ctx): DevOverview {
 
   try {
     setSetting(db, 'health_probe', nowIso());
-    checks.push({ name: 'Database', ok: true, detail: 'Reads and writes work' });
+    checks.push({ name: tr('Database'), ok: true, detail: tr('Reads and writes work') });
   } catch (err) {
-    checks.push({ name: 'Database', ok: false, detail: `Write failed: ${(err as Error).message}` });
+    checks.push({ name: tr('Database'), ok: false, detail: tr('Write failed: {error}', { error: (err as Error).message }) });
   }
 
   const integrity = parseJson<{ at: string; result: string } | null>(
@@ -62,15 +64,21 @@ export function getDevOverview(ctx: Ctx): DevOverview {
     null,
   );
   checks.push({
-    name: 'Data integrity',
+    name: tr('Data integrity'),
     ok: !integrity || integrity.result === 'ok',
-    detail: integrity ? `Last check ${integrity.at.slice(0, 16).replace('T', ' ')} UTC: ${integrity.result}` : 'Not checked yet',
+    detail: integrity
+      ? tr('Last check {at}: {result}', { at: { at: integrity.at, tz: 'UTC' }, result: integrity.result })
+      : tr('Not checked yet'),
   });
 
   const disk = config.dbFile === ':memory:' ? null : diskFree(config.dataDir);
   if (disk) {
     const ok = disk.free > 0.5 * GB && disk.free / disk.total > 0.05;
-    checks.push({ name: 'Disk space', ok, detail: `${(disk.free / GB).toFixed(1)} GB free of ${(disk.total / GB).toFixed(1)} GB` });
+    checks.push({
+      name: tr('Disk space'),
+      ok,
+      detail: tr('{free} GB free of {total} GB', { free: (disk.free / GB).toFixed(1), total: (disk.total / GB).toFixed(1) }),
+    });
   }
 
   const jobs = ctx.jobs.list();
@@ -82,20 +90,22 @@ export function getDevOverview(ctx: Ctx): DevOverview {
       })
     : [];
   checks.push({
-    name: 'Background jobs',
+    name: tr('Background jobs'),
     ok: lateJobs.length === 0,
-    detail: lateJobs.length ? `Problem with: ${lateJobs.map((j) => j.name).join(', ')}` : 'All jobs ran on time',
+    detail: lateJobs.length
+      ? tr('Problem with: {jobs}', { jobs: lateJobs.map((j) => trMsg(jobLabel(j.name))).join(tr(', ')) })
+      : tr('All jobs ran on time'),
   });
 
   const hour = metrics.lastHour5xx();
   checks.push({
-    name: 'Server errors',
+    name: tr('Server errors'),
     ok: hour.e5xx < 5 || hour.e5xx / Math.max(1, hour.total) < 0.02,
-    detail: `${hour.e5xx} errors in ${hour.total} requests during the last hour`,
+    detail: tr('Errors in the last hour: {errors} of {total} requests', { errors: hour.e5xx, total: hour.total }),
   });
 
   const loopMs = metrics.eventLoopP99Ms();
-  checks.push({ name: 'Responsiveness', ok: loopMs < 250, detail: `Event loop delay p99 ${loopMs} ms` });
+  checks.push({ name: tr('Responsiveness'), ok: loopMs < 250, detail: tr('Event loop delay p99 {ms} ms', { ms: loopMs }) });
 
   const punchRows = db
     .prepare(`SELECT substr(at, 1, 13) AS h, result, count(*) AS n FROM punches WHERE at >= ? GROUP BY h, result`)

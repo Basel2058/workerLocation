@@ -1,15 +1,33 @@
+import { getIntlLocale, t } from './i18n';
+
 // Formatting helpers. Times are always shown in the company's time zone (the workplace clock),
-// using the reader's locale for 12/24-hour style.
+// in the app's language (which also decides the 12/24-hour style).
 
 const cache = new Map<string, Intl.DateTimeFormat>();
-function dtf(tz: string, opts: Intl.DateTimeFormatOptions, locale?: string): Intl.DateTimeFormat {
-  const key = `${locale ?? ''}|${tz}|${JSON.stringify(opts)}`;
+function dtf(tz: string, opts: Intl.DateTimeFormatOptions, locale = getIntlLocale()): Intl.DateTimeFormat {
+  const key = `${locale}|${tz}|${JSON.stringify(opts)}`;
   let f = cache.get(key);
   if (!f) {
     f = new Intl.DateTimeFormat(locale, { timeZone: tz, ...opts });
     cache.set(key, f);
   }
   return f;
+}
+
+const numberFormats = new Map<string, Intl.NumberFormat>();
+function nf(opts: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const locale = getIntlLocale();
+  const key = `${locale}|${JSON.stringify(opts)}`;
+  let f = numberFormats.get(key);
+  if (!f) {
+    f = new Intl.NumberFormat(locale, opts);
+    numberFormats.set(key, f);
+  }
+  return f;
+}
+
+export function fmtNumber(n: number, maxFractionDigits = 0): string {
+  return nf({ maximumFractionDigits: maxFractionDigits }).format(n);
 }
 
 export function fmtTime(iso: string | null | undefined, tz: string): string {
@@ -54,10 +72,10 @@ export function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Monday of the week containing `date`. */
-export function weekStartOf(date: string): string {
+/** First day of the week containing `date`: 0 Sunday, 1 Monday (default), 6 Saturday — see the company setting. */
+export function weekStartOf(date: string, startsOn: 0 | 1 | 6 = 1): string {
   const day = noon(date).getUTCDay();
-  return addDays(date, -((day + 6) % 7));
+  return addDays(date, -((day - startsOn + 7) % 7));
 }
 
 export function daysBetween(from: string, to: string): number {
@@ -68,9 +86,9 @@ export function daysBetween(from: string, to: string): number {
 export function fmtDay(date: string, opts: { relative?: boolean; tz?: string } = {}): string {
   if (opts.relative && opts.tz) {
     const today = todayIn(opts.tz);
-    if (date === today) return 'Today';
-    if (date === addDays(today, 1)) return 'Tomorrow';
-    if (date === addDays(today, -1)) return 'Yesterday';
+    if (date === today) return t('common.today');
+    if (date === addDays(today, 1)) return t('common.tomorrow');
+    if (date === addDays(today, -1)) return t('common.yesterday');
   }
   return dtf('UTC', { weekday: 'short', day: 'numeric', month: 'short' }).format(noon(date));
 }
@@ -83,33 +101,45 @@ export function fmtDayMonth(date: string): string {
   return dtf('UTC', { day: 'numeric', month: 'short' }).format(noon(date));
 }
 
+/** "8h 30m" (or "8 س 30 د", "8 ש׳ 30 ד׳"). */
 export function fmtDuration(minutes: number | null | undefined): string {
   if (minutes === null || minutes === undefined) return '—';
   const m = Math.max(0, Math.round(minutes));
   const h = Math.floor(m / 60);
   const r = m % 60;
-  if (h === 0) return `${r}m`;
-  return r === 0 ? `${h}h` : `${h}h ${r}m`;
+  if (h === 0) return t('format.duration.m', { m: r });
+  return r === 0 ? t('format.duration.h', { h }) : t('format.duration.hm', { h, m: r });
 }
 
 export function fmtHours(minutes: number): string {
-  return (minutes / 60).toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return fmtNumber(minutes / 60, 1);
 }
 
 export function fmtDistance(meters: number | null | undefined): string {
   if (meters === null || meters === undefined) return '—';
-  if (meters >= 1000) return `${(meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`;
-  return `${Math.round(meters)} m`;
+  if (meters >= 1000) return nf({ style: 'unit', unit: 'kilometer', unitDisplay: 'short', maximumFractionDigits: 1 }).format(meters / 1000);
+  return nf({ style: 'unit', unit: 'meter', unitDisplay: 'short', maximumFractionDigits: 0 }).format(Math.round(meters));
 }
 
+const relativeFormats = new Map<string, Intl.RelativeTimeFormat>();
+function rtf(): Intl.RelativeTimeFormat {
+  const locale = getIntlLocale();
+  let f = relativeFormats.get(locale);
+  if (!f) {
+    f = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style: 'short' });
+    relativeFormats.set(locale, f);
+  }
+  return f;
+}
+
+/** "5 min. ago", "yesterday", "3 days ago" in the app's language. */
 export function fmtRelative(iso: string | null | undefined, now = Date.now()): string {
-  if (!iso) return 'never';
+  if (!iso) return t('common.never');
   const diff = Math.round((now - Date.parse(iso)) / 1000);
-  if (diff < 45) return 'just now';
-  if (diff < 3600) return `${Math.round(diff / 60)} min ago`;
-  if (diff < 86_400) return `${Math.round(diff / 3600)} h ago`;
-  const days = Math.round(diff / 86_400);
-  return days === 1 ? 'yesterday' : `${days} days ago`;
+  if (diff < 45) return t('format.justNow');
+  if (diff < 3600) return rtf().format(-Math.max(1, Math.round(diff / 60)), 'minute');
+  if (diff < 86_400) return rtf().format(-Math.round(diff / 3600), 'hour');
+  return rtf().format(-Math.round(diff / 86_400), 'day');
 }
 
 export function fmtBytes(bytes: number): string {
@@ -126,11 +156,8 @@ export function fmtBytes(bytes: number): string {
 
 export function fmtUptime(sec: number): string {
   const d = Math.floor(sec / 86_400);
-  const h = Math.floor((sec % 86_400) / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  if (d) return `${d}d ${h}h`;
-  if (h) return `${h}h ${m}m`;
-  return `${m}m`;
+  if (d) return t('format.duration.dh', { d, h: Math.floor((sec % 86_400) / 3600) });
+  return fmtDuration(Math.floor(sec / 60));
 }
 
 const digits = (phone: string) => phone.replace(/[^\d+]/g, '');
@@ -159,14 +186,10 @@ export function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
-export function greeting(tz: string): string {
+/** "Good morning, Aisha" by the workplace clock. */
+export function greeting(tz: string, name: string): string {
   const hour = Number(dtf(tz, { hour: '2-digit', hourCycle: 'h23' }, 'en-GB').format(new Date()));
-  if (hour < 5) return 'Good evening';
-  if (hour < 12) return 'Good morning';
-  if (hour < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
-export function plural(n: number, one: string, many = `${one}s`): string {
-  return `${n} ${n === 1 ? one : many}`;
+  if (hour >= 5 && hour < 12) return t('format.greeting.morning', { name });
+  if (hour >= 12 && hour < 18) return t('format.greeting.afternoon', { name });
+  return t('format.greeting.evening', { name });
 }

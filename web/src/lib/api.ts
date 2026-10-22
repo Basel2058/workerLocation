@@ -1,4 +1,5 @@
 import type { ApiErrorBody } from '../../../shared/types';
+import { getLocale, t } from './i18n';
 
 export class ApiError extends Error {
   constructor(
@@ -29,7 +30,13 @@ export function onAuthError(listener: Listener): () => void {
 }
 
 export async function api<T>(method: string, path: string, body?: unknown, opts: RequestOptions = {}): Promise<T> {
-  const headers: Record<string, string> = { 'x-requested-with': 'onsite', accept: 'application/json', ...opts.headers };
+  // x-lang: the server answers (errors, check-in results) in the app's language.
+  const headers: Record<string, string> = {
+    'x-requested-with': 'onsite',
+    'x-lang': getLocale(),
+    accept: 'application/json',
+    ...opts.headers,
+  };
   if (body !== undefined) headers['content-type'] = 'application/json';
   if (opts.companyId) headers['x-company-id'] = String(opts.companyId);
   let res: Response;
@@ -43,7 +50,7 @@ export async function api<T>(method: string, path: string, body?: unknown, opts:
     });
   } catch (err) {
     if ((err as Error).name === 'AbortError') throw err;
-    throw new ApiError(0, 'NETWORK', 'No connection to the server. Check your internet and try again.');
+    throw new ApiError(0, 'NETWORK', t('ui.errors.network'));
   }
   const text = await res.text();
   let data: unknown = undefined;
@@ -59,7 +66,7 @@ export async function api<T>(method: string, path: string, body?: unknown, opts:
     const err = new ApiError(
       res.status,
       e?.code ?? `HTTP_${res.status}`,
-      e?.message ?? (res.status >= 500 ? 'The server had a problem. Please try again.' : 'Request failed.'),
+      e?.message ?? (res.status >= 500 ? t('ui.errors.server') : t('ui.errors.failed')),
       e?.details,
     );
     if (res.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/totp') {
@@ -78,7 +85,7 @@ export const del = <T>(path: string, body: unknown = {}, opts?: RequestOptions) 
 export function errorMessage(err: unknown): string {
   if (err instanceof ApiError) return err.message;
   if (err instanceof Error) return err.message;
-  return 'Something went wrong.';
+  return t('common.somethingWrong');
 }
 
 /** Builds a query string, skipping empty values. */
@@ -94,11 +101,11 @@ export function qs(params: Record<string, string | number | boolean | null | und
 
 /** Downloads a file from the API (works with the developer's company header, unlike a plain link). */
 export async function downloadFile(path: string, opts: RequestOptions = {}): Promise<void> {
-  const headers: Record<string, string> = { ...opts.headers };
+  const headers: Record<string, string> = { 'x-lang': getLocale(), ...opts.headers };
   if (opts.companyId) headers['x-company-id'] = String(opts.companyId);
   const res = await fetch(path, { headers, credentials: 'same-origin' });
   if (!res.ok) {
-    let message = 'Download failed.';
+    let message = t('ui.errors.download');
     try {
       message = ((await res.json()) as ApiErrorBody).error.message;
     } catch {

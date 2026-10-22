@@ -12,6 +12,7 @@ import type {
 } from '../../../shared/types';
 import type { CompanyRow, EntryRow } from '../db/rows';
 import { idParam, rateLimit, requireAuth, requireRole } from '../http';
+import { msg, tr } from '../i18n';
 import { badRequest } from '../lib/errors';
 import { addDays, dayRange, dateSpanRange, isValidDate, localDate, nowIso, todayLocal, weekStart } from '../lib/time';
 import { createChallenge } from '../services/challenges';
@@ -125,7 +126,8 @@ export default async function workerRoutes(app: FastifyInstance) {
       .get(user.id, day.end) as { starts_at: string; ends_at: string } | undefined;
     const nextShift = next ? (workerShifts(company, user.id, next.starts_at, next.ends_at, now)[0] ?? null) : null;
 
-    const week = dateSpanRange(weekStart(today), addDays(weekStart(today), 6), tz);
+    const firstDay = weekStart(today, companySettings(company).weekStartsOn);
+    const week = dateSpanRange(firstDay, addDays(firstDay, 6), tz);
     const weekRows = db
       .prepare("SELECT status, clock_in_at, clock_out_at FROM time_entries WHERE worker_id = ? AND status = 'closed' AND clock_in_at >= ? AND clock_in_at < ?")
       .all(user.id, week.start, week.end) as EntryRow[];
@@ -139,7 +141,9 @@ export default async function workerRoutes(app: FastifyInstance) {
       .all(user.id, new Date(Date.now() - 3 * 86_400_000).toISOString()) as Array<{ type: string; at: string }>;
     for (const r of rejected) {
       notices.push(
-        `Your manager did not accept your check-${r.type} of ${new Intl.DateTimeFormat('en-GB', { timeZone: tz, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(r.at))}.`,
+        r.type === 'in'
+          ? tr('Your manager did not accept your check-in of {at}.', { at: { at: r.at, tz } })
+          : tr('Your manager did not accept your check-out of {at}.', { at: { at: r.at, tz } }),
       );
     }
 
@@ -167,7 +171,7 @@ export default async function workerRoutes(app: FastifyInstance) {
     const today = todayLocal(company.timezone);
     const from = q.from && isValidDate(q.from) ? q.from : today;
     const to = q.to && isValidDate(q.to) ? q.to : addDays(from, 27);
-    if (Date.parse(to) - Date.parse(from) > 120 * 86_400_000) throw badRequest('Choose at most 120 days.');
+    if (Date.parse(to) - Date.parse(from) > 120 * 86_400_000) throw badRequest(tr('Choose at most {count} days.', { count: 120 }));
     const range = dateSpanRange(from, to, company.timezone);
     return workerShifts(company, user.id, range.start, range.end, nowIso());
   });
@@ -241,8 +245,8 @@ export default async function workerRoutes(app: FastifyInstance) {
     });
     if (result.status === 'pending') {
       push.notifyManagers(ctx.company.id, {
-        title: 'New phone needs approval',
-        body: `${ctx.user.full_name} wants to use a new phone (${result.label}).`,
+        title: msg('New phone needs approval'),
+        body: msg('{name} wants to use a new phone ({phone}).', { name: ctx.user.full_name, phone: result.label }),
         url: '/m/requests',
         tag: `device-${result.deviceId}`,
       });
@@ -275,8 +279,11 @@ export default async function workerRoutes(app: FastifyInstance) {
     const outcome = submitPunch(ctx, envelopeSchema.parse(req.body) as SignedEnvelope);
     if (outcome.result === 'review') {
       push.notifyManagers(ctx.company.id, {
-        title: outcome.type === 'in' ? 'Check-in to review' : 'Check-out to review',
-        body: `${ctx.user.full_name}: please confirm this ${outcome.type === 'in' ? 'check-in' : 'check-out'}.`,
+        title: outcome.type === 'in' ? msg('Check-in to review') : msg('Check-out to review'),
+        body:
+          outcome.type === 'in'
+            ? msg('{name}: please confirm this check-in.', { name: ctx.user.full_name })
+            : msg('{name}: please confirm this check-out.', { name: ctx.user.full_name }),
         url: '/m/requests',
         tag: `punch-review-${ctx.user.id}`,
       });

@@ -1,6 +1,7 @@
 import type { ReviewQueue, SecurityEvent } from '../../../shared/types';
 import { parseJson, type DB } from '../db';
 import type { CompanyRow, DeviceRow, SecurityEventRow } from '../db/rows';
+import { msg, renderStored, type Msg } from '../i18n';
 import { notFound } from '../lib/errors';
 import { nowIso } from '../lib/time';
 import { companySettings } from './companies';
@@ -42,7 +43,7 @@ export function toSecurityEvent(row: EventListRow): SecurityEvent {
     userName: row.user_name,
     kind: row.kind,
     severity: row.severity,
-    message: row.message,
+    message: renderStored(row.message, row.message_i18n),
     details: parseJson<Record<string, unknown>>(row.details, {}),
     ip: row.ip,
     resolvedAt: row.resolved_at,
@@ -140,6 +141,8 @@ export function resolveSecurityEvent(db: DB, actor: Actor, companyId: number | n
     companyId: row.company_id,
     entity: 'security_event',
     entityId: id,
-    summary: `Marked alert as handled: ${row.message}`,
+    summary: row.message_i18n
+      ? msg('Marked alert as handled: {alert}', { alert: { msg: JSON.parse(row.message_i18n) as Msg } })
+      : msg('Marked alert as handled: {alert}', { alert: row.message }),
   });
 }

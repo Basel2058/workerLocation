@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePublicConfig } from '../lib/auth';
+import { t } from '../lib/i18n';
 import { currentPushSubscription, disablePush, enablePush, isIos, pushSupported } from '../lib/pwa';
 import { isStandalone } from '../lib/device';
 import { useToast } from './Toast';
@@ -20,11 +21,11 @@ export function NotificationsSwitch({ description }: { description: string }) {
   if (!supported) {
     return (
       <div>
-        <p className="text-sm font-medium text-ink">Notifications</p>
+        <p className="text-sm font-medium text-ink">{t('ui.notifications.title')}</p>
         <p className="mt-0.5 text-[13px] text-muted">
           {isIos() && !isStandalone()
-            ? 'Add the app to your Home Screen to get notifications on iPhone.'
-            : 'This browser cannot show notifications.'}
+            ? t('ui.notifications.iphoneHint')
+            : t('ui.notifications.unsupported')}
         </p>
       </div>
     );
@@ -36,8 +37,8 @@ export function NotificationsSwitch({ description }: { description: string }) {
       if (value) {
         const ok = await enablePush(config!.pushPublicKey!);
         setOn(ok);
-        if (!ok) toast.error('Notifications are blocked. Allow them for this app in your phone settings.');
-        else toast.success('Notifications are on');
+        if (!ok) toast.error(t('ui.notifications.blocked'));
+        else toast.success(t('ui.notifications.enabled'));
       } else {
         await disablePush();
         setOn(false);
@@ -49,5 +50,5 @@ export function NotificationsSwitch({ description }: { description: string }) {
     }
   };
 
-  return <Switch checked={on} onChange={(v) => void toggle(v)} disabled={busy} label="Notifications" description={description} />;
+  return <Switch checked={on} onChange={(v) => void toggle(v)} disabled={busy} label={t('ui.notifications.title')} description={description} />;
 }

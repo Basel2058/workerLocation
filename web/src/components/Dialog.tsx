@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button, cx, IconButton, Input, type ButtonVariant } from './ui';
+import { t, tRich } from '../lib/i18n';
 
 /**
  * Modal built on the native <dialog> element (focus trap, Escape, top layer for free).
@@ -67,7 +68,7 @@ export function Dialog({
         <div className="animate-sheet-up relative flex max-h-[94dvh] flex-col overflow-hidden rounded-t-3xl bg-surface shadow-pop ring-1 ring-line sm:rounded-2xl">
           <div className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-line-strong sm:hidden" aria-hidden />
           {!title && !description && (
-            <IconButton icon={X} label="Close" size="sm" onClick={onClose} className="absolute top-3 right-3 z-10" />
+            <IconButton icon={X} label={t('common.close')} size="sm" onClick={onClose} className="absolute top-3 end-3 z-10" />
           )}
           {(title || description) && (
             <div className="flex shrink-0 items-start justify-between gap-3 px-5 pt-3 pb-2 sm:pt-5">
@@ -83,7 +84,7 @@ export function Dialog({
                   </p>
                 )}
               </div>
-              <IconButton icon={X} label="Close" size="sm" onClick={onClose} className="-mr-1" />
+              <IconButton icon={X} label={t('common.close')} size="sm" onClick={onClose} className="-me-1" />
             </div>
           )}
           <div className={cx('min-h-0 flex-1 overflow-y-auto overscroll-contain', !bare && 'px-5 pb-5', bare && !title && 'rounded-t-3xl')}>
@@ -142,10 +143,10 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         footer={
           <>
             <Button variant="ghost" onClick={() => close(false)}>
-              {state?.cancelText ?? 'Cancel'}
+              {state?.cancelText ?? t('common.cancel')}
             </Button>
             <Button variant={state?.variant ?? 'brand'} disabled={blocked} onClick={() => close(true)}>
-              {state?.confirmText ?? 'Confirm'}
+              {state?.confirmText ?? t('common.confirm')}
             </Button>
           </>
         }
@@ -154,7 +155,13 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         {state?.typeToConfirm && (
           <div className="mt-4">
             <p className="mb-1.5 text-[13px] text-muted">
-              Type <span className="font-mono font-semibold text-ink">{state.typeToConfirm}</span> to confirm.
+              {tRich('ui.dialog.typeToConfirm', {
+                text: (
+                  <bdi dir="auto" className="font-mono font-semibold text-ink">
+                    {state.typeToConfirm}
+                  </bdi>
+                ),
+              })}
             </p>
             <Input value={typed} onChange={(e) => setTyped(e.target.value)} autoFocus />
           </div>

@@ -283,7 +283,7 @@ describe('check in and out', () => {
     await punch(client, phone, 'in', inside);
     backdatePunches(app, s.workers[0]!.id, 15 * 60);
     const job = await app.ctx.jobs.run('attendance');
-    expect(job.lastMessage).toContain('1 missing');
+    expect(job.lastMessage).toContain('Missing check-outs flagged: 1.');
     const m = await manager();
     const queue = await m.get('/api/m/reviews');
     expect(queue.body.incomplete).toHaveLength(1);

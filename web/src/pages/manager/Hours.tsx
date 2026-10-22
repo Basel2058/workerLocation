@@ -116,12 +116,12 @@ export function HoursPage() {
               <>
                 <div className="hidden grid-cols-[minmax(0,2fr)_repeat(6,minmax(0,1fr))_24px] gap-3 border-b border-line px-5 py-3 text-xs font-medium text-muted md:grid">
                   <span>Worker</span>
-                  <span className="text-right">Worked</span>
-                  <span className="text-right">Planned</span>
-                  <span className="text-right">Days</span>
-                  <span className="text-right">Late</span>
-                  <span className="text-right">Absent</span>
-                  <span className="text-right">To fix</span>
+                  <span className="text-end">Worked</span>
+                  <span className="text-end">Planned</span>
+                  <span className="text-end">Days</span>
+                  <span className="text-end">Late</span>
+                  <span className="text-end">Absent</span>
+                  <span className="text-end">To fix</span>
                   <span />
                 </div>
                 <div className="divide-y divide-line">
@@ -129,7 +129,7 @@ export function HoursPage() {
                     <button
                       key={r.worker.id}
                       onClick={() => setWorker(r.worker)}
-                      className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left hover:bg-surface-2/60 md:grid-cols-[minmax(0,2fr)_repeat(6,minmax(0,1fr))_24px] md:px-5"
+                      className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-start hover:bg-surface-2/60 md:grid-cols-[minmax(0,2fr)_repeat(6,minmax(0,1fr))_24px] md:px-5"
                     >
                       <span className="flex min-w-0 items-center gap-3">
                         <Avatar name={r.worker.name} size={34} />
@@ -140,12 +140,12 @@ export function HoursPage() {
                           </span>
                         </span>
                       </span>
-                      <span className="tabular text-right font-semibold md:font-medium">{fmtDuration(r.workedMinutes)}</span>
-                      <span className="tabular hidden text-right text-muted md:block">{fmtDuration(r.scheduledMinutes)}</span>
-                      <span className="tabular hidden text-right md:block">{r.daysWorked}</span>
-                      <span className={cx('tabular hidden text-right md:block', r.lateCount && 'font-medium text-amber-700 dark:text-amber-300')}>{r.lateCount}</span>
-                      <span className={cx('tabular hidden text-right md:block', r.absentCount && 'font-medium text-rose-600 dark:text-rose-400')}>{r.absentCount}</span>
-                      <span className="hidden text-right md:block">{r.openIssues ? <Badge tone="amber">{r.openIssues}</Badge> : <span className="text-faint">—</span>}</span>
+                      <span className="tabular text-end font-semibold md:font-medium">{fmtDuration(r.workedMinutes)}</span>
+                      <span className="tabular hidden text-end text-muted md:block">{fmtDuration(r.scheduledMinutes)}</span>
+                      <span className="tabular hidden text-end md:block">{r.daysWorked}</span>
+                      <span className={cx('tabular hidden text-end md:block', r.lateCount && 'font-medium text-amber-700 dark:text-amber-300')}>{r.lateCount}</span>
+                      <span className={cx('tabular hidden text-end md:block', r.absentCount && 'font-medium text-rose-600 dark:text-rose-400')}>{r.absentCount}</span>
+                      <span className="hidden text-end md:block">{r.openIssues ? <Badge tone="amber">{r.openIssues}</Badge> : <span className="text-faint">—</span>}</span>
                       <ChevronRight className="hidden size-4 text-faint md:block" />
                     </button>
                   ))}
@@ -243,10 +243,10 @@ function WorkerEntries({
                     <div className="min-w-0 flex-1">
                       <p className="tabular text-sm font-medium">
                         {fmtTime(e.clockInAt, m.tz)} → {e.clockOutAt ? fmtTime(e.clockOutAt, m.tz) : e.status === 'open' ? 'now' : '—'}
-                        <span className="ml-2 font-normal text-muted">{e.minutes !== null ? fmtDuration(e.minutes) : ''}</span>
+                        <span className="ms-2 font-normal text-muted">{e.minutes !== null ? fmtDuration(e.minutes) : ''}</span>
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-1">
-                        {e.siteName && <span className="mr-1 text-xs text-muted">{e.siteName}</span>}
+                        {e.siteName && <span className="me-1 text-xs text-muted">{e.siteName}</span>}
                         {e.status === 'void' && <Badge tone="gray">Removed</Badge>}
                         {e.status === 'open' && <Badge tone="green">At work</Badge>}
                         {e.status === 'incomplete' && <Badge tone="amber">No check-out</Badge>}
@@ -306,7 +306,7 @@ function PickWorker({ open, onClose, onPick }: { open: boolean; onClose: () => v
       <Input placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
       <div className="mt-3 max-h-80 divide-y divide-line overflow-y-auto">
         {list.map((w) => (
-          <button key={w.id} onClick={() => onPick(w)} className="flex w-full items-center gap-3 px-1 py-2.5 text-left hover:bg-surface-2">
+          <button key={w.id} onClick={() => onPick(w)} className="flex w-full items-center gap-3 px-1 py-2.5 text-start hover:bg-surface-2">
             <Avatar name={w.fullName} size={32} />
             <span className="font-medium">{w.fullName}</span>
           </button>

@@ -5,6 +5,7 @@ import { LogoMark } from '../../components/Logo';
 import { Button, cx } from '../../components/ui';
 import { isStandalone } from '../../lib/device';
 import { useStoredState } from '../../lib/hooks';
+import { t, tRich } from '../../lib/i18n';
 import { isIos } from '../../lib/pwa';
 import { useDevice, type DeviceState } from './useDevice';
 import { WorkerHome } from './WorkerHome';
@@ -55,14 +56,14 @@ export function WorkerApp() {
 
 function BottomNav() {
   const items = [
-    { to: '/w', label: 'Home', icon: House, end: true },
-    { to: '/w/shifts', label: 'Shifts', icon: CalendarDays, end: false },
-    { to: '/w/me', label: 'Me', icon: UserRound, end: false },
+    { to: '/w', label: t('worker.nav.home'), icon: House, end: true },
+    { to: '/w/shifts', label: t('worker.nav.shifts'), icon: CalendarDays, end: false },
+    { to: '/w/me', label: t('worker.nav.me'), icon: UserRound, end: false },
   ];
   return (
     <nav
       className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/90 backdrop-blur-xl"
-      aria-label="Main"
+      aria-label={t('ui.shell.mainNav')}
     >
       <div className="mx-auto grid max-w-md grid-cols-3">
         {items.map(({ to, label, icon: Icon, end }) => (
@@ -94,28 +95,33 @@ function InstallHint({ onSkip }: { onSkip: () => void }) {
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-10">
       <LogoMark size={56} />
-      <h1 className="mt-6 text-[26px] font-semibold tracking-tight">Add the app to your Home Screen</h1>
-      <p className="mt-2 text-[15px] text-muted">Then checking in is one tap from your Home Screen. It takes 10 seconds:</p>
+      <h1 className="mt-6 text-[26px] font-semibold tracking-tight">{t('worker.install.title')}</h1>
+      <p className="mt-2 text-[15px] text-muted">{t('worker.install.intro')}</p>
       <ol className="mt-6 space-y-4 text-[15px]">
         <li className="flex items-start gap-3">
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-soft font-semibold text-brand">1</span>
           <span className="pt-1">
-            Tap the <Share className="inline size-5 -translate-y-0.5 text-sky-600" aria-label="Share" /> Share button at the bottom of Safari.
+            {tRich('worker.install.step1', {
+              icon: <Share className="inline size-5 -translate-y-0.5 text-sky-600" aria-label={t('worker.install.share')} />,
+            })}
           </span>
         </li>
         <li className="flex items-start gap-3">
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-soft font-semibold text-brand">2</span>
           <span className="pt-1">
-            Choose <SquarePlus className="inline size-5 -translate-y-0.5" aria-hidden /> <b>Add to Home Screen</b>.
+            {tRich('worker.install.step2', {
+              icon: <SquarePlus className="inline size-5 -translate-y-0.5" aria-hidden />,
+              action: <b>{t('worker.install.addToHomeScreen')}</b>,
+            })}
           </span>
         </li>
         <li className="flex items-start gap-3">
           <span className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-soft font-semibold text-brand">3</span>
-          <span className="pt-1">Open the app from your Home Screen and sign in there.</span>
+          <span className="pt-1">{t('worker.install.step3')}</span>
         </li>
       </ol>
       <Button variant="ghost" className="mt-10" onClick={onSkip}>
-        Continue in Safari instead
+        {t('worker.install.skip')}
       </Button>
     </div>
   );

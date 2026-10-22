@@ -1,6 +1,7 @@
 import type { Shift, TimeEntry } from '../../../shared/types';
 import type { DB } from '../db';
 import type { CompanyRow, ShiftRow, UserRow } from '../db/rows';
+import { msg } from '../i18n';
 import { badRequest, conflict, notFound } from '../lib/errors';
 import { addDays, addMinutes, formatLocal, localDate, localTime, nowIso, zonedToUtc } from '../lib/time';
 import { getSite } from './companies';
@@ -168,7 +169,12 @@ export function createShifts(db: DB, actor: Actor, company: CompanyRow, input: S
       companyId: company.id,
       entity: 'shift',
       entityId: created.map((s) => s.id).join(','),
-      summary: `Created ${created.length} shift${created.length === 1 ? '' : 's'} at ${site.name} (${input.start}–${input.end})`,
+      summary: msg('Created {count} shifts at {site} ({from}–{to})', {
+        count: created.length,
+        site: site.name,
+        from: input.start,
+        to: input.end,
+      }),
       details: { workerIds: workers.map((w) => w.id), dates, start: input.start, end: input.end },
     });
   })();
@@ -211,7 +217,12 @@ export function updateShift(db: DB, actor: Actor, company: CompanyRow, id: numbe
     companyId: company.id,
     entity: 'shift',
     entityId: id,
-    summary: `Changed ${after.worker_name}'s shift to ${formatLocal(after.starts_at, tz)}–${localTime(after.ends_at, tz)} at ${after.site_name}`,
+    summary: msg('Changed {name}’s shift to {from}–{to} at {site}', {
+      name: after.worker_name,
+      from: { at: after.starts_at, tz },
+      to: { at: after.ends_at, tz, style: 'time' },
+      site: after.site_name,
+    }),
     details: {
       before: { siteId: before.site_id, workerId: before.worker_id, startsAt: before.starts_at, endsAt: before.ends_at, note: before.note },
       after: { siteId, workerId, startsAt: range.startsAt, endsAt: range.endsAt, note: after.note },
@@ -227,7 +238,11 @@ export function deleteShift(db: DB, actor: Actor, company: CompanyRow, id: numbe
     companyId: company.id,
     entity: 'shift',
     entityId: id,
-    summary: `Deleted ${row.worker_name}'s shift ${formatLocal(row.starts_at, company.timezone)}–${localTime(row.ends_at, company.timezone)}`,
+    summary: msg('Deleted {name}’s shift {from}–{to}', {
+      name: row.worker_name,
+      from: { at: row.starts_at, tz: company.timezone },
+      to: { at: row.ends_at, tz: company.timezone, style: 'time' },
+    }),
     details: { workerId: row.worker_id, siteId: row.site_id, startsAt: row.starts_at, endsAt: row.ends_at },
   });
 }
@@ -271,7 +286,12 @@ export function copyWeek(
     audit(db, actor, 'shift.copy_week', {
       companyId: company.id,
       entity: 'shift',
-      summary: `Copied week of ${fromWeekStart} to week of ${toWeekStart}: ${created} created, ${skipped} skipped`,
+      summary: msg('Copied the week of {from} to the week of {to} (created: {created}, skipped: {skipped})', {
+        from: { at: `${fromWeekStart}T12:00:00Z`, tz: 'UTC', style: 'date' },
+        to: { at: `${toWeekStart}T12:00:00Z`, tz: 'UTC', style: 'date' },
+        created,
+        skipped,
+      }),
       details: { fromWeekStart, toWeekStart, created, skipped },
     });
   })();

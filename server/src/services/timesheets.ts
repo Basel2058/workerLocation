@@ -2,6 +2,7 @@ import type { TimeEntry, TimesheetResponse, TimesheetRow } from '../../../shared
 import { flagInfo } from '../../../shared/types';
 import type { DB } from '../db';
 import type { CompanyRow } from '../db/rows';
+import { tr } from '../i18n';
 import { dateSpanRange, formatLocal, localDate, minutesBetween, nowIso } from '../lib/time';
 import { companySettings } from './companies';
 import { listEntries } from './entries';
@@ -101,9 +102,28 @@ const toCsv = (rows: Array<Array<string | number | null>>) =>
 
 const hours = (minutes: number) => (minutes / 60).toFixed(2);
 
+export const ENTRY_STATUS_LABELS: Record<TimeEntry['status'], string> = {
+  open: 'Checked in',
+  closed: 'Complete',
+  incomplete: 'Missing check-out',
+  void: 'Removed',
+};
+
+// Column names and values are in the reader's language; numbers and dates stay machine-readable.
 export function timesheetSummaryCsv(data: TimesheetData): string {
   return toCsv([
-    ['Worker', 'Employee code', 'Scheduled hours', 'Worked hours', 'Days worked', 'Shifts', 'Late arrivals', 'Late minutes', 'Absences', 'Open issues'],
+    [
+      tr('Worker'),
+      tr('Employee code'),
+      tr('Scheduled hours'),
+      tr('Worked hours'),
+      tr('Days worked'),
+      tr('Shifts'),
+      tr('Late arrivals'),
+      tr('Late minutes'),
+      tr('Absences'),
+      tr('Open issues'),
+    ],
     ...data.response.rows.map((r) => [
       r.worker.name,
       r.worker.employeeCode,
@@ -125,7 +145,22 @@ export function timesheetEntriesCsv(data: TimesheetData, tz: string): string {
     (a, b) => a.workerName.localeCompare(b.workerName) || a.clockInAt.localeCompare(b.clockInAt),
   );
   return toCsv([
-    ['Date', 'Worker', 'Site', 'Shift start', 'Shift end', 'Check in', 'Check out', 'Hours', 'Late minutes', 'Status', 'Source', 'Flags', 'Note', 'Edited by'],
+    [
+      tr('Date'),
+      tr('Worker'),
+      tr('Workplace'),
+      tr('Shift start'),
+      tr('Shift end'),
+      tr('Check-in'),
+      tr('Check-out'),
+      tr('Hours'),
+      tr('Late minutes'),
+      tr('Status'),
+      tr('Source'),
+      tr('Flags'),
+      tr('Note'),
+      tr('Edited by'),
+    ],
     ...entries.map((e) => [
       localDate(e.clockInAt, tz),
       e.workerName,
@@ -136,9 +171,9 @@ export function timesheetEntriesCsv(data: TimesheetData, tz: string): string {
       fmt(e.clockOutAt),
       e.minutes === null ? '' : hours(e.minutes),
       e.lateMinutes ?? '',
-      e.needsReview ? 'needs review' : e.status,
-      e.source,
-      e.flags.map((f) => flagInfo(f).label).join('; '),
+      e.needsReview ? tr('Needs review') : tr(ENTRY_STATUS_LABELS[e.status]),
+      tr(e.source === 'manual' ? 'Added by a manager' : 'App'),
+      e.flags.map((f) => tr(flagInfo(f).label)).join('; '),
       e.note,
       e.editedByName ?? '',
     ]),

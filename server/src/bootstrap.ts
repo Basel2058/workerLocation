@@ -1,6 +1,7 @@
 import { hashPassword } from './auth/password';
 import type { AppConfig } from './config';
 import type { DB } from './db';
+import { msg } from './i18n';
 import { generatePassword } from './lib/crypto';
 import { nowIso } from './lib/time';
 import { audit, SYSTEM_ACTOR } from './services/logs';
@@ -20,7 +21,7 @@ export async function ensureDeveloper(db: DB, config: AppConfig, log: (msg: stri
     `INSERT INTO users (company_id, role, username, password_hash, full_name, must_change_password, password_changed_at, created_at, updated_at)
      VALUES (NULL, 'developer', ?, ?, 'Developer', ?, ?, ?, ?)`,
   ).run(username, await hashPassword(password), provided ? 0 : 1, now, now, now);
-  audit(db, SYSTEM_ACTOR, 'user.bootstrap', { entity: 'user', summary: `Created the first developer account "${username}"` });
+  audit(db, SYSTEM_ACTOR, 'user.bootstrap', { entity: 'user', summary: msg('Created the first owner account “{username}”', { username }) });
   if (!provided) {
     log(
       [

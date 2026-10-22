@@ -1,7 +1,9 @@
+import { t } from '../../lib/i18n';
+
 /** "iPhone · Safari" style label from a user agent string (for lists of sessions and check-ins). */
 export function deviceLabelShort(ua: string): string {
-  if (!ua) return 'Unknown device';
-  let device = 'Computer';
+  if (!ua) return t('dev.device.unknown');
+  let device = t('dev.device.computer');
   if (/iPhone/.test(ua)) device = 'iPhone';
   else if (/iPad/.test(ua)) device = 'iPad';
   else if (/Android/.test(ua)) device = 'Android';
@@ -15,4 +17,18 @@ export function deviceLabelShort(ua: string): string {
   else if (/CriOS|Chrome\//.test(ua)) browser = 'Chrome';
   else if (/Safari\//.test(ua)) browser = 'Safari';
   return browser ? `${device} · ${browser}` : device;
+}
+
+/** A role in the app language. The change history also has 'system' for changes made by the app itself. */
+export function roleLabel(role: string): string {
+  switch (role) {
+    case 'developer':
+    case 'manager':
+    case 'worker':
+      return t(`common.roles.${role}`);
+    case 'system':
+      return t('dev.audit.system');
+    default:
+      return role;
+  }
 }

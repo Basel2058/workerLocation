@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { LOCALE_INFO } from '../../../shared/i18n';
 import type { PublicConfig } from '../../../shared/types';
 import { rateLimit } from '../http';
+import { requestLocale, tr } from '../i18n';
 import { systemLog } from '../services/logs';
 
 export default async function publicRoutes(app: FastifyInstance) {
@@ -26,12 +28,16 @@ export default async function publicRoutes(app: FastifyInstance) {
     }
   });
 
+  // In the phone's language (the browser's Accept-Language), used when the app is installed.
   app.get('/manifest.webmanifest', async (_req, reply) => {
     reply.header('content-type', 'application/manifest+json').header('cache-control', 'no-cache');
+    const locale = requestLocale();
     return {
       name: config.appName,
       short_name: config.appName,
-      description: 'Check in and out at work with your phone.',
+      description: tr('Check in and out at work with your phone.'),
+      lang: locale,
+      dir: LOCALE_INFO[locale].dir,
       start_url: '/',
       scope: '/',
       display: 'standalone',

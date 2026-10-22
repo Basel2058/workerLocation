@@ -5,6 +5,7 @@ import type {
   SignedEnvelope,
 } from '../../../shared/types';
 import { post } from './api';
+import { t } from './i18n';
 
 // Each browser holds one ECDSA P-256 key, generated as NON-EXTRACTABLE: scripts can use it to sign but can
 // never read or copy it. The server binds the public half to one worker, so a password alone does not let
@@ -90,7 +91,7 @@ export async function ensureDeviceKey(): Promise<StoredKey> {
 
 export async function signPayload(payload: object): Promise<SignedEnvelope> {
   const key = await getDeviceKey();
-  if (!key) throw new Error('This phone has no device key yet.');
+  if (!key) throw new Error(t('worker.device.noKey'));
   const text = JSON.stringify(payload);
   const signature = await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, key.keyPair.privateKey, new TextEncoder().encode(text));
   return { keyId: key.keyId, payload: text, signature: b64url(signature) };

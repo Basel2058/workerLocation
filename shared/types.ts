@@ -1,6 +1,9 @@
 // API contract shared by the server and the web app.
 // Timestamps are ISO-8601 UTC strings unless noted. Local dates are 'YYYY-MM-DD' in the company time zone.
 
+import type { Locale } from './i18n';
+
+export type { Locale } from './i18n';
 export type Role = 'developer' | 'manager' | 'worker';
 
 export interface SessionUser {
@@ -14,6 +17,10 @@ export interface SessionUser {
   timezone: string;
   mustChangePassword: boolean;
   totpEnabled: boolean;
+  /** The language the person chose; null until they (or the owner) pick one. */
+  locale: Locale | null;
+  /** First day of the company's week: 0 Sunday, 1 Monday, 6 Saturday. */
+  weekStartsOn: WeekStart;
 }
 
 export interface MeResponse {
@@ -46,6 +53,7 @@ export interface ApiErrorBody {
 // Companies, sites, settings
 
 export type SelfieMode = 'always' | 'random' | 'off';
+export type WeekStart = 0 | 1 | 6;
 
 export interface CompanySettings {
   /** When a selfie is required on check-in/out. */
@@ -72,6 +80,10 @@ export interface CompanySettings {
   photoRetentionDays: number;
   /** What happens to suspicious punches. */
   highRiskAction: 'review' | 'reject';
+  /** Language for new accounts and their login messages. */
+  language: Locale;
+  /** First day of the week for schedules and weekly hours: 0 Sunday, 1 Monday, 6 Saturday. */
+  weekStartsOn: WeekStart;
 }
 
 export interface Company {
@@ -146,6 +158,7 @@ export interface UserRecord {
   lastLoginAt: string | null;
   lastSeenAt: string | null;
   createdAt: string;
+  locale: Locale | null;
   activeDevice: { id: number; label: string; lastUsedAt: string | null } | null;
   pendingDevices: number;
 }
@@ -755,4 +768,6 @@ export const DEFAULT_COMPANY_SETTINGS: CompanySettings = {
   maxOpenHours: 14,
   photoRetentionDays: 90,
   highRiskAction: 'review',
+  language: 'en',
+  weekStartsOn: 1,
 };

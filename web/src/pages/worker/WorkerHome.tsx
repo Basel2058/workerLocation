@@ -8,6 +8,7 @@ import { get } from '../../lib/api';
 import { useAuth, useUser } from '../../lib/auth';
 import { fmtDay, fmtDuration, fmtFullDate, fmtTime, greeting } from '../../lib/format';
 import { useNow } from '../../lib/hooks';
+import { t } from '../../lib/i18n';
 import { PunchFlow, type PunchKind } from './PunchFlow';
 import { useWorker } from './WorkerApp';
 
@@ -43,7 +44,7 @@ export function WorkerHome() {
   const data = home.data;
   const open = data?.openEntry ?? null;
   const ready = device.state === 'active';
-  const firstName = user.fullName.split(' ')[0];
+  const firstName = user.fullName.split(' ')[0] ?? user.fullName;
 
   return (
     <div className="animate-fade-up">
@@ -51,7 +52,7 @@ export function WorkerHome() {
         <div className="min-w-0">
           <p className="text-[13px] font-medium text-muted">{fmtFullDate(new Date(now).toISOString(), tz)}</p>
           <h1 className="mt-0.5 truncate text-[26px] font-semibold tracking-tight">
-            {greeting(tz)}, {firstName}
+            {greeting(tz, firstName)}
           </h1>
         </div>
         <LogoMark size={36} />
@@ -83,12 +84,18 @@ export function WorkerHome() {
             ) : open ? (
               <StatusLine
                 tone="green"
-                title={`On site${open.siteName ? ` · ${open.siteName}` : ''}`}
-                detail={`Since ${fmtTime(open.clockInAt, tz)} · ${now - Date.parse(open.clockInAt) < 60_000 ? 'just now' : fmtDuration((now - Date.parse(open.clockInAt)) / 60_000)}`}
-                badge={open.needsReview ? <Badge tone="amber">Waiting for manager</Badge> : null}
+                title={open.siteName ? t('worker.home.onSiteAt', { site: open.siteName }) : t('worker.home.onSite')}
+                detail={t('worker.home.since', {
+                  time: fmtTime(open.clockInAt, tz),
+                  duration:
+                    now - Date.parse(open.clockInAt) < 60_000
+                      ? t('format.justNow')
+                      : fmtDuration((now - Date.parse(open.clockInAt)) / 60_000),
+                })}
+                badge={open.needsReview ? <Badge tone="amber">{t('worker.status.waitingForManager')}</Badge> : null}
               />
             ) : (
-              <StatusLine tone="gray" title="Not checked in" detail={todayLine(data.todayShifts, tz, now)} />
+              <StatusLine tone="gray" title={t('worker.home.notCheckedIn')} detail={todayLine(data.todayShifts, tz, now)} />
             )}
           </div>
 
@@ -100,7 +107,7 @@ export function WorkerHome() {
             />
             <p className="mt-5 flex items-center gap-1.5 text-center text-xs text-faint">
               <Fingerprint className="size-3.5" aria-hidden />
-              {data?.selfieMode === 'off' ? 'Your location is checked when you tap.' : 'Your location and a quick photo are checked.'}
+              {data?.selfieMode === 'off' ? t('worker.home.locationChecked') : t('worker.home.locationAndPhotoChecked')}
             </p>
           </div>
         </Card>
@@ -110,20 +117,20 @@ export function WorkerHome() {
         {data && (
           <div className="grid grid-cols-2 gap-3">
             <Card className="p-4">
-              <p className="text-[13px] text-muted">Next shift</p>
+              <p className="text-[13px] text-muted">{t('worker.home.nextShift')}</p>
               {data.nextShift ? (
                 <>
                   <p className="mt-1 font-semibold">{fmtDay(data.nextShift.date, { relative: true, tz })}</p>
                   <p className="tabular text-sm text-ink-2">
-                    {fmtTime(data.nextShift.startsAt, tz)} – {fmtTime(data.nextShift.endsAt, tz)}
+                    {t('common.range', { from: fmtTime(data.nextShift.startsAt, tz), to: fmtTime(data.nextShift.endsAt, tz) })}
                   </p>
                 </>
               ) : (
-                <p className="mt-1 text-sm text-faint">None planned</p>
+                <p className="mt-1 text-sm text-faint">{t('worker.home.nonePlanned')}</p>
               )}
             </Card>
             <Card className="p-4">
-              <p className="text-[13px] text-muted">This week</p>
+              <p className="text-[13px] text-muted">{t('worker.home.thisWeek')}</p>
               <p className="tabular mt-1 text-2xl font-semibold tracking-tight">
                 {fmtDuration(data.weekMinutes + (open ? (now - Date.parse(open.clockInAt)) / 60_000 : 0))}
               </p>
@@ -147,10 +154,13 @@ export function WorkerHome() {
 
 function todayLine(shifts: WorkerShift[], tz: string, now: number): string {
   const next = shifts.find((s) => Date.parse(s.endsAt) > now);
-  if (!next) return shifts.length ? 'Your shifts for today are over.' : 'No shift today.';
+  if (!next) return shifts.length ? t('worker.home.shiftsOver') : t('worker.home.noShiftToday');
   const startsIn = Math.round((Date.parse(next.startsAt) - now) / 60_000);
-  if (startsIn > 0) return `Shift starts at ${fmtTime(next.startsAt, tz)}${startsIn <= 90 ? ` (in ${fmtDuration(startsIn)})` : ''}.`;
-  return `Your shift started at ${fmtTime(next.startsAt, tz)}.`;
+  const time = fmtTime(next.startsAt, tz);
+  if (startsIn > 0) {
+    return startsIn <= 90 ? t('worker.home.shiftStartsIn', { time, wait: fmtDuration(startsIn) }) : t('worker.home.shiftStarts', { time });
+  }
+  return t('worker.home.shiftStarted', { time });
 }
 
 function StatusLine({ tone, title, detail, badge }: { tone: 'green' | 'gray'; title: string; detail: string; badge?: ReactNode }) {
@@ -190,7 +200,7 @@ function PunchButton({ kind, disabled, onClick }: { kind: 'in' | 'out'; disabled
       >
         <span className="flex flex-col items-center gap-2">
           <Icon className="size-9" strokeWidth={2.2} aria-hidden />
-          <span className="text-[22px] font-semibold tracking-tight">{isIn ? 'Check in' : 'Check out'}</span>
+          <span className="text-[22px] font-semibold tracking-tight">{isIn ? t('worker.home.checkIn') : t('worker.home.checkOut')}</span>
         </span>
       </button>
     </div>
@@ -208,17 +218,17 @@ function TodayCard({ shifts, tz }: { shifts: WorkerShift[]; tz: string }) {
           </div>
           <div className="min-w-0 flex-1">
             <p className="tabular font-medium">
-              Today {fmtTime(s.startsAt, tz)} – {fmtTime(s.endsAt, tz)}
+              {t('worker.home.todayShift', { range: t('common.range', { from: fmtTime(s.startsAt, tz), to: fmtTime(s.endsAt, tz) }) })}
             </p>
             <p className="flex items-center gap-1 truncate text-sm text-muted">
               <MapPin className="size-3.5 shrink-0" aria-hidden />
               {s.siteName}
-              {s.note && ` · ${s.note}`}
+              {s.note && `${t('common.separator')}${s.note}`}
             </p>
           </div>
-          {s.state === 'worked' && <Badge tone="green">Done</Badge>}
-          {s.state === 'missed' && <Badge tone="red">Missed</Badge>}
-          {s.state === 'now' && <Badge tone="teal">Now</Badge>}
+          {s.state === 'worked' && <Badge tone="green">{t('worker.status.shiftDone')}</Badge>}
+          {s.state === 'missed' && <Badge tone="red">{t('worker.status.shiftMissed')}</Badge>}
+          {s.state === 'now' && <Badge tone="teal">{t('worker.status.shiftNow')}</Badge>}
         </div>
       ))}
     </Card>
@@ -232,12 +242,12 @@ function PresenceBanner({ expiresAt, now, onConfirm }: { expiresAt: string; now:
       <div className="flex items-start gap-3">
         <BellRing className="mt-0.5 size-5 shrink-0" aria-hidden />
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">Your manager asks: are you at work?</p>
-          <p className="text-sm opacity-80">Please confirm within {left} min.</p>
+          <p className="font-semibold">{t('worker.home.presence.title')}</p>
+          <p className="text-sm opacity-80">{t('worker.home.presence.within', { count: left })}</p>
         </div>
       </div>
       <Button variant="ink" block className="mt-3" onClick={onConfirm}>
-        Yes, confirm my location
+        {t('worker.home.presence.confirm')}
       </Button>
     </div>
   );
@@ -260,14 +270,14 @@ function DeviceNotice() {
     case 'checking':
     case 'registering':
       return (
-        <Notice tone="gray" icon={Smartphone} title="Setting up this phone…">
-          This only happens once.
+        <Notice tone="gray" icon={Smartphone} title={t('worker.device.settingUp')}>
+          {t('worker.device.onlyOnce')}
         </Notice>
       );
     case 'pending':
       return (
-        <Notice tone="amber" icon={Smartphone} title="Waiting for your manager">
-          This phone must be approved before you can check in. You will be able to check in as soon as your manager approves it.
+        <Notice tone="amber" icon={Smartphone} title={t('worker.device.pendingTitle')}>
+          {t('worker.device.pendingBody')}
         </Notice>
       );
     case 'revoked':
@@ -276,17 +286,17 @@ function DeviceNotice() {
         <Notice
           tone="red"
           icon={ShieldAlert}
-          title={device.state === 'revoked' ? 'This phone was removed from your account' : 'Your manager did not approve this phone'}
+          title={device.state === 'revoked' ? t('worker.device.revokedTitle') : t('worker.device.rejectedTitle')}
           action={
             <div className="space-y-2">
-              <Textarea rows={2} placeholder="Message for your manager (for example: I have a new phone)" value={note} onChange={(e) => setNote(e.target.value)} />
+              <Textarea rows={2} placeholder={t('worker.device.askPlaceholder')} value={note} onChange={(e) => setNote(e.target.value)} />
               <Button variant="ink" size="sm" loading={busy} onClick={() => void ask()}>
-                Ask to use this phone
+                {t('worker.device.ask')}
               </Button>
             </div>
           }
         >
-          To check in from this phone, ask your manager to approve it again.
+          {t('worker.device.askBody')}
         </Notice>
       );
     case 'conflict':
@@ -294,29 +304,29 @@ function DeviceNotice() {
         <Notice
           tone="red"
           icon={ShieldAlert}
-          title="This phone belongs to another worker"
+          title={t('worker.device.conflictTitle')}
           action={
             <Button variant="ink" size="sm" onClick={() => void logout()}>
-              Sign out
+              {t('ui.shell.signOut')}
             </Button>
           }
         >
-          Every worker must check in with their own phone. Your manager has been told about this sign-in.
+          {t('worker.device.conflictBody')}
         </Notice>
       );
     case 'unsupported':
       return (
-        <Notice tone="red" icon={ShieldAlert} title="This browser is not supported">
-          Please open the app in Safari (iPhone) or Chrome (Android).
+        <Notice tone="red" icon={ShieldAlert} title={t('worker.device.unsupportedTitle')}>
+          {t('worker.device.unsupportedBody')}
         </Notice>
       );
     default:
       return (
-        <Notice tone="red" icon={ShieldAlert} title="Phone setup failed">
-          {device.error ?? 'Please try again.'}
+        <Notice tone="red" icon={ShieldAlert} title={t('worker.device.failedTitle')}>
+          {device.error ?? t('worker.device.failedBody')}
           <div className="mt-2">
             <Button size="sm" variant="secondary" onClick={() => void device.register()}>
-              Try again
+              {t('common.tryAgain')}
             </Button>
           </div>
         </Notice>

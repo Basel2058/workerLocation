@@ -60,8 +60,10 @@ export function localTime(iso: string, tz: string): string {
 }
 
 /** Monday of the week containing the given local date. */
-export function weekStart(date: string): string {
-  return DateTime.fromISO(date).startOf('week').toISODate()!;
+/** First day of the week containing `date`; `startsOn`: 0 Sunday, 1 Monday, 6 Saturday. */
+export function weekStart(date: string, startsOn: 0 | 1 | 6 = 1): string {
+  const d = DateTime.fromISO(date);
+  return d.minus({ days: ((d.weekday % 7) - startsOn + 7) % 7 }).toISODate()!;
 }
 
 export function addDays(date: string, days: number): string {

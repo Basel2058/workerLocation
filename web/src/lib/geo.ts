@@ -1,4 +1,5 @@
 import type { LocationSample } from '../../../shared/types';
+import { t } from './i18n';
 
 export type GeoFailure = 'unsupported' | 'denied' | 'unavailable' | 'timeout' | 'insecure';
 
@@ -100,25 +101,7 @@ export async function permissionState(name: 'geolocation' | 'camera'): Promise<P
   }
 }
 
-export const geoFailureText: Record<GeoFailure, { title: string; body: string }> = {
-  unsupported: {
-    title: 'Location is not available',
-    body: 'This browser cannot share your location. Open the app in Chrome or Safari on your phone.',
-  },
-  insecure: {
-    title: 'Secure connection needed',
-    body: 'Location only works over a secure (https) connection. Ask your manager for the correct address.',
-  },
-  denied: {
-    title: 'Location is blocked',
-    body: 'Allow location for this app: open your phone Settings → Privacy / Location → your browser, choose "While using" and turn on Precise Location. Then try again.',
-  },
-  unavailable: {
-    title: 'Can’t find your location',
-    body: 'Turn on Location (GPS) on your phone, step outside or near a window, and try again.',
-  },
-  timeout: {
-    title: 'Location took too long',
-    body: 'Your phone did not report a location in time. Make sure Location is on and try again.',
-  },
-};
+/** What to tell the worker when the location could not be read, in the app's language. */
+export function geoFailureText(kind: GeoFailure): { title: string; body: string } {
+  return { title: t(`worker.geo.${kind}.title`), body: t(`worker.geo.${kind}.body`) };
+}

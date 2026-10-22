@@ -8,6 +8,7 @@ import { CameraError, cameraFailureText, captureFrame, startCamera, stopCamera, 
 import { clientEnvironment, getDeviceKey, signPayload } from '../../lib/device';
 import { fmtDistance, fmtDuration, fmtTime } from '../../lib/format';
 import { collectSamples, GeoError, geoFailureText } from '../../lib/geo';
+import { t } from '../../lib/i18n';
 
 export type PunchKind = 'in' | 'out' | 'presence';
 
@@ -61,7 +62,8 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
   const abortRef = useRef<AbortController | null>(null);
 
   const type = kind === 'presence' ? 'check' : kind;
-  const verb = kind === 'in' ? 'Check in' : kind === 'out' ? 'Check out' : 'Confirm you’re at work';
+  const verb = t(`worker.punch.title.${kind}`);
+  const failedTitle = t(`worker.punch.failed.${kind}`);
 
   const fail = useCallback((f: Failure) => {
     stopCamera(streamRef.current);
@@ -74,7 +76,7 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
 
   const newChallenge = useCallback(async (): Promise<PunchChallenge> => {
     const key = await getDeviceKey();
-    if (!key) throw new ApiError(403, 'DEVICE_UNKNOWN', 'This phone is not set up yet.');
+    if (!key) throw new ApiError(403, 'DEVICE_UNKNOWN', t('worker.punch.notSetUp'));
     return kind === 'presence'
       ? post<PunchChallenge>(`/api/presence/${presenceId}/challenge`, { keyId: key.keyId })
       : post<PunchChallenge>('/api/punch/challenge', { type: kind, keyId: key.keyId });
@@ -99,7 +101,7 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
       .then((s) => !ctrl.signal.aborted && setSamples(s))
       .catch((err) => {
         if (ctrl.signal.aborted) return;
-        fail(err instanceof GeoError ? geoFailureText[err.kind] : { title: 'Location problem', body: errorMessage(err) });
+        fail(err instanceof GeoError ? geoFailureText(err.kind) : { title: t('worker.punch.locationProblem'), body: errorMessage(err) });
       });
     newChallenge()
       .then((c) => {
@@ -107,9 +109,9 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
         setChallenge(c);
         if (c.requireSelfie) setPhase('camera');
       })
-      .catch((err) => !ctrl.signal.aborted && fail({ title: `Could not ${verb.toLowerCase()}`, body: errorMessage(err) }));
+      .catch((err) => !ctrl.signal.aborted && fail({ title: failedTitle, body: errorMessage(err) }));
     return () => ctrl.abort();
-  }, [attempt, newChallenge, fail, verb]);
+  }, [attempt, newChallenge, fail, failedTitle]);
 
   // Camera runs only while the worker is framing the photo.
   useEffect(() => {
@@ -129,7 +131,9 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
           markReady();
         }
       })
-      .catch((err) => !cancelled && fail(err instanceof CameraError ? cameraFailureText[err.kind] : { title: 'Camera problem', body: errorMessage(err) }));
+      .catch(
+        (err) => !cancelled && fail(err instanceof CameraError ? cameraFailureText(err.kind) : { title: t('worker.punch.cameraProblem'), body: errorMessage(err) }),
+      );
     return () => {
       cancelled = true;
       video.removeEventListener('loadeddata', markReady);
@@ -171,14 +175,14 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
     } catch (err) {
       if (err instanceof ApiError && (err.code === 'ALREADY_IN' || err.code === 'NOT_IN')) {
         setChanged(true);
-        fail({ title: 'Your status changed', body: err.message });
+        fail({ title: t('worker.punch.statusChanged'), body: err.message });
       } else if (err instanceof ApiError && err.code === 'CHALLENGE_INVALID') {
-        fail({ title: 'That took too long', body: 'Please try again — it only takes a few seconds.' });
+        fail({ title: t('worker.punch.tooSlowTitle'), body: t('worker.punch.tooSlowBody') });
       } else {
-        fail({ title: `Could not ${verb.toLowerCase()}`, body: errorMessage(err) });
+        fail({ title: failedTitle, body: errorMessage(err) });
       }
     }
-  }, [samples, challenge, photo, requestNote, kind, presenceId, type, fail, verb]);
+  }, [samples, challenge, photo, requestNote, kind, presenceId, type, fail, failedTitle]);
 
   // Send automatically as soon as everything needed is ready.
   useEffect(() => {
@@ -202,7 +206,8 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
       setChallenge(ch);
       if (ch.requireSelfie && !photo) setPhase('camera');
     } catch (err) {
-      fail({ title: 'Could not send the request', body: errorMessage(err) });
+      // A location failure carries only its kind; explain it in words.
+      fail({ title: t('worker.punch.requestFailed'), body: err instanceof GeoError ? geoFailureText(err.kind).body : errorMessage(err) });
     }
   };
 
@@ -213,7 +218,7 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
     try {
       const shot = captureFrame(video);
       if (shot.brightness < 28) {
-        setHint('The photo is too dark. Face a light and make sure nothing covers the camera.');
+        setHint(t('worker.punch.tooDark'));
         return;
       }
       setHint(null);
@@ -221,7 +226,7 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
       stopCamera(streamRef.current);
       streamRef.current = null;
     } catch (err) {
-      fail(err instanceof CameraError ? cameraFailureText[err.kind] : { title: 'Camera problem', body: errorMessage(err) });
+      fail(err instanceof CameraError ? cameraFailureText(err.kind) : { title: t('worker.punch.cameraProblem'), body: errorMessage(err) });
     }
   };
 
@@ -235,8 +240,8 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
   useEffect(() => {
     const ok = punchResult?.result === 'accepted' || presenceResult?.status === 'passed';
     if (phase !== 'result' || !ok) return;
-    const t = setTimeout(() => onClose(true), 4500);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => onClose(true), 4500);
+    return () => clearTimeout(timer);
   }, [phase, punchResult, presenceResult, onClose]);
 
   const showCamera = phase === 'camera' || (phase === 'sending' && !!photo);
@@ -247,7 +252,7 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
       <div className="safe-top flex items-center justify-between px-4 pt-3">
         <span className="text-sm font-medium text-muted">{verb}</span>
         {phase !== 'sending' && (
-          <button onClick={close} className="grid size-10 place-items-center rounded-full text-muted hover:bg-surface-2" aria-label="Close">
+          <button onClick={close} className="grid size-10 place-items-center rounded-full text-muted hover:bg-surface-2" aria-label={t('common.close')}>
             <X className="size-5" />
           </button>
         )}
@@ -260,7 +265,7 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
           <div className="flex w-full flex-col items-center">
             <div className="relative size-64 overflow-hidden rounded-full bg-surface-3 shadow-pop ring-4 ring-surface sm:size-72">
               {photo ? (
-                <img src={photo.dataUrl} alt="Your photo" className="size-full -scale-x-100 object-cover" />
+                <img src={photo.dataUrl} alt={t('worker.punch.yourPhoto')} className="size-full -scale-x-100 object-cover" />
               ) : (
                 <video ref={videoRef} className="size-full -scale-x-100 object-cover" playsInline muted autoPlay />
               )}
@@ -271,10 +276,14 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
               )}
             </div>
             <p className="mt-6 text-lg font-semibold text-ink">
-              {!photo ? 'Take a quick photo' : samples ? 'Sending…' : 'Almost done…'}
+              {!photo ? t('worker.punch.takeQuickPhoto') : samples ? t('worker.punch.sending') : t('worker.punch.almostDone')}
             </p>
             <p className="mt-1 text-sm text-muted">
-              {!photo ? 'Make sure your face is clearly visible.' : samples ? 'Checking your location and photo' : 'Waiting for your location'}
+              {!photo
+                ? t('worker.punch.faceVisible')
+                : samples
+                  ? t('worker.punch.checkingLocationAndPhoto')
+                  : t('worker.punch.waitingForLocation')}
             </p>
             {hint && <p className="mt-3 max-w-xs text-sm font-medium text-amber-700 dark:text-amber-300">{hint}</p>}
             <LocationLine best={best} ready={!!samples} />
@@ -283,7 +292,7 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
                 onClick={takePhoto}
                 disabled={!cameraReady}
                 className="mt-8 grid size-20 place-items-center rounded-full bg-white text-slate-900 shadow-pop ring-4 ring-brand/40 transition-transform active:scale-95 disabled:opacity-50"
-                aria-label={cameraReady ? 'Take photo' : 'Starting camera'}
+                aria-label={cameraReady ? t('worker.punch.takePhoto') : t('worker.punch.startingCamera')}
               >
                 {cameraReady ? <Camera className="size-8" /> : <span className="size-7 animate-spin rounded-full border-[3px] border-slate-300 border-t-slate-700" />}
               </button>
@@ -294,7 +303,7 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
         {phase === 'sending' && !photo && (
           <div className="flex flex-col items-center">
             <span className="size-12 animate-spin rounded-full border-4 border-surface-3 border-t-brand" />
-            <p className="mt-6 text-lg font-semibold">Verifying…</p>
+            <p className="mt-6 text-lg font-semibold">{t('worker.punch.verifying')}</p>
           </div>
         )}
 
@@ -312,27 +321,27 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
         {phase === 'result' && presenceResult && (
           <ResultCard
             tone={presenceResult.status === 'passed' ? 'ok' : 'bad'}
-            title={presenceResult.status === 'passed' ? 'You’re confirmed at work' : 'Not confirmed'}
+            title={presenceResult.status === 'passed' ? t('worker.punch.presenceConfirmed') : t('worker.punch.presenceNotConfirmed')}
             body={presenceResult.message}
             actions={
               <Button variant="ink" size="lg" block onClick={() => onClose(true)}>
-                Done
+                {t('common.done')}
               </Button>
             }
           />
         )}
 
         {phase === 'request' && (
-          <div className="w-full max-w-sm text-left">
-            <h2 className="text-xl font-semibold text-ink">Ask your manager</h2>
+          <div className="w-full max-w-sm text-start">
+            <h2 className="text-xl font-semibold text-ink">{t('worker.punch.request.title')}</h2>
             <p className="mt-1 text-sm text-muted">
-              Your manager will see where you are and decide. Explain why you are {kind === 'in' ? 'checking in' : 'checking out'} from here.
+              {kind === 'in' ? t('worker.punch.request.bodyIn') : t('worker.punch.request.bodyOut')}
             </p>
             <Textarea
               className="mt-4"
               rows={3}
               maxLength={300}
-              placeholder="For example: working at the customer’s house today"
+              placeholder={t('worker.punch.request.placeholder')}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               autoFocus
@@ -346,10 +355,10 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
               disabled={note.trim().length < 3}
               onClick={() => void startRequest(note.trim())}
             >
-              Send to manager
+              {t('worker.punch.request.send')}
             </Button>
             <Button variant="ghost" block className="mt-2" onClick={() => setPhase('result')}>
-              Back
+              {t('common.back')}
             </Button>
           </div>
         )}
@@ -362,10 +371,10 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
             actions={
               <>
                 <Button variant="ink" size="lg" block icon={RotateCcw} onClick={() => setAttempt((a) => a + 1)}>
-                  Try again
+                  {t('common.tryAgain')}
                 </Button>
                 <Button variant="ghost" block onClick={close}>
-                  Close
+                  {t('common.close')}
                 </Button>
               </>
             }
@@ -387,8 +396,10 @@ function Locating({ best }: { best: LocationSample | null }) {
           <LocateFixed className="size-10" />
         </span>
       </div>
-      <p className="mt-8 text-lg font-semibold text-ink">Finding your location…</p>
-      <p className="tabular mt-1 h-5 text-sm text-muted">{best ? `Accurate to ${Math.round(best.acc)} m` : 'Keep the app open'}</p>
+      <p className="mt-8 text-lg font-semibold text-ink">{t('worker.punch.findingYourLocation')}</p>
+      <p className="tabular mt-1 h-5 text-sm text-muted">
+        {best ? t('worker.punch.accurateTo', { distance: fmtDistance(best.acc) }) : t('worker.punch.keepOpen')}
+      </p>
     </div>
   );
 }
@@ -402,7 +413,13 @@ function LocationLine({ best, ready }: { best: LocationSample | null; ready: boo
       )}
     >
       <MapPin className="size-3.5" />
-      {ready ? `Location found${best ? ` · ±${Math.round(best.acc)} m` : ''}` : best ? `Locating · ±${Math.round(best.acc)} m` : 'Finding location…'}
+      {ready
+        ? best
+          ? t('worker.punch.locationFoundAccuracy', { distance: fmtDistance(best.acc) })
+          : t('worker.punch.locationFound')
+        : best
+          ? t('worker.punch.locating', { distance: fmtDistance(best.acc) })
+          : t('worker.punch.findingLocation')}
     </p>
   );
 }
@@ -464,27 +481,29 @@ function PunchResultView({
     return (
       <ResultCard
         tone="bad"
-        title={isIn ? 'Not checked in' : 'Not checked out'}
+        title={isIn ? t('worker.punch.notCheckedIn') : t('worker.punch.notCheckedOut')}
         body={result.message}
         extra={
           result.distanceM !== null && result.reason === 'OUTSIDE_GEOFENCE' ? (
             <p className="mt-4 rounded-full bg-surface-2 px-3 py-1 text-sm text-ink-2">
-              {fmtDistance(result.distanceM)} away{result.siteName ? ` from ${result.siteName}` : ''}
+              {result.siteName
+                ? t('worker.punch.awayFrom', { distance: fmtDistance(result.distanceM), site: result.siteName })
+                : t('worker.punch.away', { distance: fmtDistance(result.distanceM) })}
             </p>
           ) : null
         }
         actions={
           <>
             <Button variant="ink" size="lg" block icon={RotateCcw} onClick={onRetry}>
-              Try again
+              {t('common.tryAgain')}
             </Button>
             {result.canRequest && (
               <Button variant="secondary" size="lg" block icon={Send} onClick={onRequest}>
-                Ask manager to accept
+                {t('worker.punch.askManager')}
               </Button>
             )}
             <Button variant="ghost" block onClick={onDone}>
-              Close
+              {t('common.close')}
             </Button>
           </>
         }
@@ -495,24 +514,26 @@ function PunchResultView({
   return (
     <ResultCard
       tone={result.result === 'review' ? 'wait' : 'ok'}
-      title={isIn ? 'Checked in' : 'Checked out'}
+      title={isIn ? t('worker.punch.checkedIn') : t('worker.punch.checkedOut')}
       big={fmtTime(result.at, timezone)}
       body={result.result === 'review' ? result.message : (result.siteName ?? undefined)}
       extra={
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           {result.lateMinutes !== null && (
             <span className="rounded-full bg-amber-500/15 px-3 py-1 text-sm font-medium text-amber-800 dark:text-amber-300">
-              {fmtDuration(result.lateMinutes)} late
+              {t('worker.status.late', { duration: fmtDuration(result.lateMinutes) })}
             </span>
           )}
           {worked !== null && worked > 0 && (
-            <span className="rounded-full bg-surface-2 px-3 py-1 text-sm font-medium text-ink-2">Worked {fmtDuration(worked)}</span>
+            <span className="rounded-full bg-surface-2 px-3 py-1 text-sm font-medium text-ink-2">
+              {t('worker.punch.worked', { duration: fmtDuration(worked) })}
+            </span>
           )}
         </div>
       }
       actions={
         <Button variant="ink" size="lg" block onClick={onDone}>
-          Done
+          {t('common.done')}
         </Button>
       }
     />

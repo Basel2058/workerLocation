@@ -4,6 +4,7 @@ import { Route, Routes } from 'react-router';
 import type { DevOverview } from '../../../../shared/types';
 import { AppShell } from '../../components/AppShell';
 import { get } from '../../lib/api';
+import { t } from '../../lib/i18n';
 import { AccountPage } from '../Account';
 import { CompaniesPage, CompanyDetailPage } from './Companies';
 import { AlertsPage, AuditPage, LogsPage, PunchLogPage, SessionsPage } from './Logs';
@@ -14,17 +15,22 @@ export default function DevApp() {
   const overview = useQuery({ queryKey: ['dev', 'overview'], queryFn: () => get<DevOverview>('/api/dev/overview'), refetchInterval: 30_000 });
   const errors = overview.data?.recentErrors.length ?? 0;
   const items = [
-    { to: '/dev', label: 'Overview', icon: Activity, end: true },
-    { to: '/dev/companies', label: 'Companies', icon: Building2 },
-    { to: '/dev/people', label: 'People', icon: Users },
-    { to: '/dev/punches', label: 'Check-ins', icon: MapPinned },
-    { to: '/dev/alerts', label: 'Alerts', icon: ShieldAlert },
-    { to: '/dev/audit', label: 'Change history', icon: ScrollText },
-    { to: '/dev/logs', label: 'System log', icon: TriangleAlert, badge: errors },
-    { to: '/dev/sessions', label: 'Sessions', icon: KeyRound },
+    { to: '/dev', label: t('dev.nav.overview'), icon: Activity, end: true },
+    { to: '/dev/companies', label: t('dev.nav.companies'), icon: Building2 },
+    { to: '/dev/people', label: t('dev.nav.people'), icon: Users },
+    { to: '/dev/punches', label: t('dev.nav.punches'), icon: MapPinned },
+    { to: '/dev/alerts', label: t('dev.nav.alerts'), icon: ShieldAlert },
+    { to: '/dev/audit', label: t('dev.nav.audit'), icon: ScrollText },
+    { to: '/dev/logs', label: t('dev.nav.logs'), icon: TriangleAlert, badge: errors },
+    { to: '/dev/sessions', label: t('dev.nav.sessions'), icon: KeyRound },
   ];
   return (
-    <AppShell title="Owner console" subtitle={overview.data?.status === 'degraded' ? 'Needs attention' : 'All systems normal'} items={items} accountTo="/dev/account">
+    <AppShell
+      title={t('dev.shell.title')}
+      subtitle={overview.data?.status === 'degraded' ? t('dev.shell.needsAttention') : t('dev.shell.allNormal')}
+      items={items}
+      accountTo="/dev/account"
+    >
       <Routes>
         <Route index element={<OverviewPage />} />
         <Route path="companies" element={<CompaniesPage />} />

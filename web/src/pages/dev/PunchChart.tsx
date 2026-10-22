@@ -1,14 +1,22 @@
 import { useId, useMemo, useState } from 'react';
 import type { DevOverview } from '../../../../shared/types';
 import { cx } from '../../components/ui';
+import { getIntlLocale, t, useI18n } from '../../lib/i18n';
 
 // Check-ins per hour over the last 24 hours, stacked by outcome. Outcomes are states, so they use the
 // fixed status colors (good / warning / critical) with a labelled legend, a tooltip and a table view.
+// The chart itself always reads left to right (time runs left to right in every language).
 const SERIES = [
-  { key: 'accepted', label: 'Accepted', color: '#0ca30c' },
-  { key: 'review', label: 'Sent for review', color: '#fab219' },
-  { key: 'rejected', label: 'Rejected', color: '#d03b3b' },
+  { key: 'accepted', color: '#0ca30c' },
+  { key: 'review', color: '#fab219' },
+  { key: 'rejected', color: '#d03b3b' },
 ] as const;
+
+function seriesLabel(key: (typeof SERIES)[number]['key']): string {
+  if (key === 'accepted') return t('dev.chart.accepted');
+  if (key === 'review') return t('dev.chart.review');
+  return t('dev.chart.rejected');
+}
 
 type Hour = DevOverview['punchesByHour'][number];
 
@@ -24,12 +32,16 @@ function niceMax(v: number): number {
   return step * 4;
 }
 
-const hourLabel = (iso: string) => new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(new Date(iso));
-
 export function PunchChart({ data }: { data: Hour[] }) {
+  const { dir } = useI18n();
   const [hover, setHover] = useState<number | null>(null);
   const [table, setTable] = useState(false);
   const titleId = useId();
+  // Hours in the app language (the whole app re-mounts when the language changes).
+  const hourLabel = useMemo(() => {
+    const format = new Intl.DateTimeFormat(getIntlLocale(), { hour: 'numeric' });
+    return (iso: string) => format.format(new Date(iso));
+  }, []);
   const max = useMemo(() => niceMax(Math.max(0, ...data.map((d) => d.accepted + d.review + d.rejected))), [data]);
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
@@ -45,11 +57,11 @@ export function PunchChart({ data }: { data: Hour[] }) {
         {SERIES.map((s) => (
           <span key={s.key} className="inline-flex items-center gap-1.5 text-xs text-ink-2">
             <span className="size-2.5 rounded-[3px]" style={{ background: s.color }} aria-hidden />
-            {s.label}
+            {seriesLabel(s.key)}
           </span>
         ))}
-        <button onClick={() => setTable((t) => !t)} className="ml-auto text-xs font-medium text-brand hover:underline">
-          {table ? 'Show chart' : 'Show table'}
+        <button onClick={() => setTable((v) => !v)} className="ms-auto text-xs font-medium text-brand hover:underline">
+          {table ? t('dev.chart.showChart') : t('dev.chart.showTable')}
         </button>
       </div>
 
@@ -58,10 +70,10 @@ export function PunchChart({ data }: { data: Hour[] }) {
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-surface-2 text-xs text-muted">
               <tr>
-                <th className="px-3 py-2 text-left font-medium">Hour</th>
+                <th className="px-3 py-2 text-start font-medium">{t('dev.chart.hour')}</th>
                 {SERIES.map((s) => (
-                  <th key={s.key} className="px-3 py-2 text-right font-medium">
-                    {s.label}
+                  <th key={s.key} className="px-3 py-2 text-end font-medium">
+                    {seriesLabel(s.key)}
                   </th>
                 ))}
               </tr>
@@ -71,7 +83,7 @@ export function PunchChart({ data }: { data: Hour[] }) {
                 <tr key={d.hour}>
                   <td className="px-3 py-1.5">{hourLabel(d.hour)}</td>
                   {SERIES.map((s) => (
-                    <td key={s.key} className="px-3 py-1.5 text-right">
+                    <td key={s.key} className="px-3 py-1.5 text-end">
                       {d[s.key]}
                     </td>
                   ))}
@@ -81,14 +93,14 @@ export function PunchChart({ data }: { data: Hour[] }) {
           </table>
         </div>
       ) : (
-        <div className="relative">
+        <div className="relative" dir="ltr">
           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-labelledby={titleId} onPointerLeave={() => setHover(null)}>
-            <title id={titleId}>Check-ins per hour, last 24 hours</title>
-            {ticks.map((t) => (
-              <g key={t}>
-                <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + plotH - y(t)} y2={PAD.top + plotH - y(t)} className="stroke-line" strokeWidth={1} />
-                <text x={PAD.left - 8} y={PAD.top + plotH - y(t)} dy="0.32em" textAnchor="end" className="fill-faint text-[10px]">
-                  {Math.round(t)}
+            <title id={titleId}>{t('dev.chart.title')}</title>
+            {ticks.map((tick) => (
+              <g key={tick}>
+                <line x1={PAD.left} x2={W - PAD.right} y1={PAD.top + plotH - y(tick)} y2={PAD.top + plotH - y(tick)} className="stroke-line" strokeWidth={1} />
+                <text x={PAD.left - 8} y={PAD.top + plotH - y(tick)} dy="0.32em" textAnchor="end" className="fill-faint text-[10px]">
+                  {Math.round(tick)}
                 </text>
               </g>
             ))}
@@ -120,7 +132,7 @@ export function PunchChart({ data }: { data: Hour[] }) {
                     height={plotH}
                     fill="transparent"
                     tabIndex={0}
-                    aria-label={`${hourLabel(d.hour)}: ${d.accepted} accepted, ${d.review} for review, ${d.rejected} rejected`}
+                    aria-label={t('dev.chart.bar', { hour: hourLabel(d.hour), accepted: d.accepted, review: d.review, rejected: d.rejected })}
                     onPointerEnter={() => setHover(i)}
                     onFocus={() => setHover(i)}
                     onBlur={() => setHover(null)}
@@ -132,6 +144,7 @@ export function PunchChart({ data }: { data: Hour[] }) {
           </svg>
           {active && hover !== null && (
             <div
+              dir={dir}
               className={cx('pointer-events-none absolute top-0 z-10 w-44 rounded-xl bg-surface p-3 text-xs shadow-pop ring-1 ring-line')}
               style={{
                 left: `${Math.min(80, Math.max(0, ((PAD.left + hover * band + band / 2) / W) * 100 - 12))}%`,
@@ -142,7 +155,7 @@ export function PunchChart({ data }: { data: Hour[] }) {
                 <p key={s.key} className="flex items-center gap-2 py-0.5">
                   <span className="h-0.5 w-3 rounded-full" style={{ background: s.color }} aria-hidden />
                   <span className="tabular font-semibold text-ink">{active[s.key]}</span>
-                  <span className="text-muted">{s.label}</span>
+                  <span className="text-muted">{seriesLabel(s.key)}</span>
                 </p>
               ))}
             </div>
