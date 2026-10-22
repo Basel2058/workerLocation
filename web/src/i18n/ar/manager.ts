@@ -34,6 +34,7 @@ export const manager: Translation<typeof en> = {
     checkedIn: 'وقت الحضور',
     checkedOut: 'وقت الانصراف',
     worker: 'العامل',
+    withSite: '{text} · {site}',
   },
   status: {
     onSite: 'في الموقع',
@@ -45,7 +46,7 @@ export const manager: Translation<typeof en> = {
     arrived: 'وصل {time}',
     arrivedLate: 'وصل {time} · تأخير {late}',
     arrivedNoCheckout: 'وصل {time} · لم يسجّل الانصراف',
-    leftEarly: '{range} · انصراف مبكر بـ{duration}',
+    leftEarly: 'انصراف مبكر بـ{duration}',
     shiftStarted: 'بدأت الوردية {time}',
     didNotCome: 'لم يحضر',
     noShift: 'بدون وردية',
@@ -137,7 +138,7 @@ export const manager: Translation<typeof en> = {
       currentPhone: 'الهاتف الحالي',
       noCurrentPhone: 'لا يوجد',
       lastUsed: 'آخر استخدام {time}',
-      similar: 'الطراز والإعدادات نفسها كما في هاتف {name}. هذا طبيعي إذا كانا يملكان الهاتف نفسه ببساطة.',
+      similar: 'هذا الهاتف من الطراز نفسه وبالإعدادات نفسها مثل هاتف {name}. هذا طبيعي إذا كان لديهما ببساطة الهاتف نفسه.',
       replaces: 'عند الموافقة سيتوقف الهاتف القديم ({label}) عن العمل.',
       firstPhone: 'سيصبح هذا هاتفه لتسجيل الحضور.',
       rejectTitle: 'رفض هذا الهاتف لـ{name}؟',
@@ -260,6 +261,7 @@ export const manager: Translation<typeof en> = {
     notePlaceholder: 'مثلًا: إحضار حذاء السلامة',
     timeZone: 'الأوقات حسب المنطقة الزمنية لموقع العمل ({tz}).',
     chipRange: '{from}–{to}',
+    siteNote: '{site} · {note}',
   },
   hours: {
     title: 'كشف الساعات',
@@ -320,7 +322,7 @@ export const manager: Translation<typeof en> = {
     restore: 'استعادة',
     restoreTitle: 'استعادة الحضور',
     restorePlaceholder: 'لماذا يعد هذا الحضور صحيحًا في النهاية؟',
-    pickWorker: 'إضافة حضور لـ…',
+    pickWorker: 'إضافة حضور لعامل…',
   },
   team: {
     title: 'الفريق',
@@ -350,6 +352,7 @@ export const manager: Translation<typeof en> = {
     detail: {
       off: 'معطّل',
       atWorkSince: 'في العمل منذ {time}',
+      atWorkSinceAt: 'في العمل منذ {time} · {site}',
       presenceAsked: 'تم إرسال طلب تأكيد التواجد',
       presenceHint: 'يمكنك طلب إثبات أنه لا يزال في موقع العمل.',
       recent: 'الحضور، آخر 14 يومًا',

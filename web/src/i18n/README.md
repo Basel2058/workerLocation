@@ -127,4 +127,6 @@ keep **gender-neutral** forms:
 | Correct / correction (attendance) | تصحيح | תיקון |
 | Reason | السبب | סיבה |
 
-Check for leftovers with `node scripts/i18n-check.mjs web/src/pages/worker` (any path).
+Check for leftovers with `node scripts/i18n-check.mjs web/src/pages/worker` (any path). `npm test` also checks that
+Arabic and Hebrew have every key, keep every placeholder, give all plural forms and leave no English behind
+(`catalogs.test.ts`), and that every server text has a translation (`server/test/i18n.test.ts`).

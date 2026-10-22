@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo } from 'react';
-import type { Company, Site } from '../../../../shared/types';
+import type { Company, Site, WeekStart } from '../../../../shared/types';
 import { del, get, patch, post } from '../../lib/api';
 
 export interface ManagerApi {
@@ -9,6 +9,8 @@ export interface ManagerApi {
   company: Company | undefined;
   sites: Site[];
   tz: string;
+  /** First day of the company's week (0 Sunday, 1 Monday, 6 Saturday). */
+  weekStartsOn: WeekStart;
   pendingReviews: number;
   get<T>(path: string): Promise<T>; // i18n-ignore (generic, not text)
   post<T>(path: string, body?: unknown): Promise<T>; // i18n-ignore
@@ -42,6 +44,7 @@ export function useManagerValue(
       company,
       sites,
       tz: company?.timezone ?? fallbackTz,
+      weekStartsOn: company?.settings.weekStartsOn ?? 1,
       pendingReviews,
       get: <T,>(path: string) => get<T>(path, opts),
       post: <T,>(path: string, body: unknown = {}) => post<T>(path, body, opts),

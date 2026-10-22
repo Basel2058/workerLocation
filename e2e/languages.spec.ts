@@ -29,7 +29,8 @@ test('a worker with a Hebrew phone gets the app in Hebrew, right to left, and ca
   await page.getByRole('button', { name: 'צילום תמונה' }).click({ timeout: 15_000 });
   await expect(page.getByRole('heading', { name: 'נרשמה כניסה' })).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'סיום' }).click();
-  await expect(page.getByText('באתר · Riverside Tower')).toBeVisible();
+  // Names inside Hebrew/Arabic sentences are wrapped in invisible direction isolates (U+2068 … U+2069).
+  await expect(page.getByText(/באתר · \u2068?Riverside Tower/)).toBeVisible();
 
   // Switching to Arabic on the "Me" page changes the whole app and is saved on the account.
   await page.getByRole('link', { name: 'החשבון שלי' }).click();

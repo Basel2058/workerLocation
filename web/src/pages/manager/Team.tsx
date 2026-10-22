@@ -22,7 +22,7 @@ import {
   PageLoader,
 } from '../../components/ui';
 import { fmtDateTime, fmtDay, fmtDuration, fmtRelative, fmtTime, localDateOf, telHref, whatsappHref } from '../../lib/format';
-import { t, tRich } from '../../lib/i18n';
+import { isolate, t, tRich } from '../../lib/i18n';
 import { useManager } from './context';
 import { EntryEditor, type EntryEditorTarget } from './EntryEditor';
 import { presenceText } from './PersonSheet';
@@ -189,7 +189,11 @@ export function WorkerDetailPage() {
             <Notice
               tone="green"
               icon={Radar}
-              title={[t('manager.team.detail.atWorkSince', { time: fmtTime(open.clockInAt, tz) }), open.siteName].filter(Boolean).join(t('common.separator'))}
+              title={
+                open.siteName
+                  ? t('manager.team.detail.atWorkSinceAt', { time: fmtTime(open.clockInAt, tz), site: open.siteName })
+                  : t('manager.team.detail.atWorkSince', { time: fmtTime(open.clockInAt, tz) })
+              }
               action={
                 presence?.status !== 'pending' ? (
                   <Button
@@ -320,7 +324,7 @@ export function WorkerDetailPage() {
                     <span className="tabular text-ink-2">
                       {t('common.range', { from: fmtTime(s.startsAt, tz), to: fmtTime(s.endsAt, tz) })}
                       {t('common.separator')}
-                      {s.siteName}
+                      {isolate(s.siteName)}
                     </span>
                   </div>
                 ))}

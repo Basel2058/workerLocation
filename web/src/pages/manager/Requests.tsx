@@ -282,7 +282,10 @@ function PersonLine({ name, phone, meta }: { name: string; phone?: string; meta:
 function IncompleteCard({ entry, tz, onUseShiftEnd, onEdit }: { entry: TimeEntry; tz: string; onUseShiftEnd: () => void; onEdit: () => void }) {
   return (
     <Card className="p-4 sm:p-5">
-      <PersonLine name={entry.workerName} meta={[fmtDateTime(entry.clockInAt, tz), entry.siteName].filter(Boolean).join(t('common.separator'))} />
+      <PersonLine
+        name={entry.workerName}
+        meta={entry.siteName ? t('manager.shared.withSite', { text: fmtDateTime(entry.clockInAt, tz), site: entry.siteName }) : fmtDateTime(entry.clockInAt, tz)}
+      />
       <div className="mt-3 flex items-center gap-2 text-sm text-ink-2">
         <Clock3 className="size-4 shrink-0 text-amber-600" />
         {entry.shiftEndsAt

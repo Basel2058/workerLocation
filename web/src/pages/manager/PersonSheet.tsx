@@ -101,7 +101,9 @@ export function PersonSheet({
               <Kv label={t('manager.person.status')}>{statusDetail(row, tz)}</Kv>
               {row.entry && (
                 <Kv label={t('manager.shared.checkedIn')}>
-                  {[fmtTime(row.entry.clockInAt, tz), row.entry.siteName].filter(Boolean).join(t('common.separator'))}
+                  {row.entry.siteName
+                    ? t('manager.shared.withSite', { text: fmtTime(row.entry.clockInAt, tz), site: row.entry.siteName })
+                    : fmtTime(row.entry.clockInAt, tz)}
                 </Kv>
               )}
               {row.entry?.clockOutAt && <Kv label={t('manager.shared.checkedOut')}>{fmtTime(row.entry.clockOutAt, tz)}</Kv>}

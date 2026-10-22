@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Clock3, Download, Pencil, Plus, RotateCcw } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { TeamMember, TimeEntry, TimesheetResponse, TimesheetRow } from '../../../../shared/types';
+import type { TeamMember, TimeEntry, TimesheetResponse, TimesheetRow, WeekStart } from '../../../../shared/types';
 import { Dialog } from '../../components/Dialog';
 import { useToast } from '../../components/Toast';
 import { Avatar, Badge, Button, Card, cx, EmptyState, ErrorBox, Field, Input, PageHeader, PageLoader, Select, Stat, Switch, Textarea } from '../../components/ui';
@@ -13,8 +13,8 @@ import { EntryEditor, type EntryEditorTarget } from './EntryEditor';
 
 type Preset = 'this-week' | 'last-week' | 'this-month' | 'last-month' | 'custom';
 
-function presetRange(preset: Preset, today: string): { from: string; to: string } {
-  const week = weekStartOf(today);
+function presetRange(preset: Preset, today: string, weekStartsOn: WeekStart): { from: string; to: string } {
+  const week = weekStartOf(today, weekStartsOn);
   const monthStart = `${today.slice(0, 8)}01`;
   switch (preset) {
     case 'this-week':
@@ -37,8 +37,8 @@ export function HoursPage() {
   const toast = useToast();
   const today = todayIn(m.tz);
   const [preset, setPreset] = useState<Preset>('this-week');
-  const [custom, setCustom] = useState(() => presetRange('this-week', today));
-  const range = preset === 'custom' ? custom : presetRange(preset, today);
+  const [custom, setCustom] = useState(() => presetRange('this-week', today, m.weekStartsOn));
+  const range = preset === 'custom' ? custom : presetRange(preset, today, m.weekStartsOn);
   const [worker, setWorker] = useState<TimesheetRow['worker'] | null>(null);
   const [editor, setEditor] = useState<EntryEditorTarget | null>(null);
   const [pickWorker, setPickWorker] = useState(false);

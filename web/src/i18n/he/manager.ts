@@ -34,6 +34,7 @@ export const manager: Translation<typeof en> = {
     checkedIn: 'כניסה',
     checkedOut: 'יציאה',
     worker: 'עובד',
+    withSite: '{text} · {site}',
   },
   status: {
     onSite: 'באתר',
@@ -45,7 +46,7 @@ export const manager: Translation<typeof en> = {
     arrived: 'כניסה ב-{time}',
     arrivedLate: 'כניסה ב-{time} · איחור של {late}',
     arrivedNoCheckout: 'כניסה ב-{time} · חסרה יציאה',
-    leftEarly: '{range} · יציאה מוקדמת של {duration}',
+    leftEarly: 'יציאה מוקדמת של {duration}',
     shiftStarted: 'המשמרת התחילה ב-{time}',
     didNotCome: 'המשמרת עברה ללא כניסה',
     noShift: 'ללא משמרת',
@@ -215,6 +216,7 @@ export const manager: Translation<typeof en> = {
     notePlaceholder: 'לדוגמה: להביא נעלי בטיחות',
     timeZone: 'השעות לפי אזור הזמן של מקום העבודה ({tz}).',
     chipRange: '{from}–{to}',
+    siteNote: '{site} · {note}',
   },
   hours: {
     title: 'דוח שעות',
@@ -282,6 +284,7 @@ export const manager: Translation<typeof en> = {
     detail: {
       off: 'מושבת',
       atWorkSince: 'בעבודה מאז {time}',
+      atWorkSinceAt: 'בעבודה מאז {time} · {site}',
       presenceAsked: 'נשלחה בדיקת נוכחות',
       presenceHint: 'אפשר לבקש הוכחה שהעובד עדיין במקום העבודה.',
       recent: 'נוכחות ב-14 הימים האחרונים',

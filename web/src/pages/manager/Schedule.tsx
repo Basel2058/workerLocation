@@ -24,7 +24,7 @@ export function SchedulePage() {
   const confirm = useConfirm();
   const isDesktop = useIsDesktop();
   const today = todayIn(m.tz);
-  const [week, setWeek] = useState(() => weekStartOf(today));
+  const [week, setWeek] = useState(() => weekStartOf(today, m.weekStartsOn));
   const [day, setDay] = useState(today);
   const [draft, setDraft] = useState<Draft | null>(null);
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(week, i)), [week]);
@@ -93,12 +93,12 @@ export function SchedulePage() {
           <IconButton icon={ChevronRight} label={t('manager.schedule.nextWeek')} variant="secondary" onClick={() => setWeek(addDays(week, 7))} />
           <p className="ms-2 text-[15px] font-semibold">{t('common.range', { from: fmtDayMonth(days[0]!), to: fmtDayMonth(days[6]!) })}</p>
         </div>
-        {week !== weekStartOf(today) && (
+        {week !== weekStartOf(today, m.weekStartsOn) && (
           <Button
             size="sm"
             variant="ghost"
             onClick={() => {
-              setWeek(weekStartOf(today));
+              setWeek(weekStartOf(today, m.weekStartsOn));
               setDay(today);
             }}
           >
@@ -262,8 +262,7 @@ function MobileDays({
                 <p className="truncate font-medium">{s.workerName}</p>
                 <p className="flex items-center gap-1.5 truncate text-[13px] text-muted">
                   <span className={cx('size-2 shrink-0 rounded-full', siteColor(s.siteId))} />
-                  {s.siteName}
-                  {s.note && `${t('common.separator')}${s.note}`}
+                  {s.note ? t('manager.schedule.siteNote', { site: s.siteName, note: s.note }) : s.siteName}
                 </p>
               </div>
               <span className="tabular text-sm font-medium">{t('common.range', { from: fmtTime(s.startsAt, tz), to: fmtTime(s.endsAt, tz) })}</span>

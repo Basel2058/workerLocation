@@ -229,8 +229,7 @@ function LiveRowItem({ row, tz, selected, onClick }: { row: LiveRow; tz: string;
             row.status === 'late' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-surface-2 text-ink-2 hover:bg-surface-3',
           )}
           aria-label={t('manager.shared.callName', { name: row.worker.name })}
-          // A tooltip is plain text: the isolate marks (LRI…PDI) keep "+972 50 …" in order in right-to-left languages.
-          title={t('manager.shared.callPhone', { phone: `\u2066${row.worker.phone}\u2069` })}
+          title={t('manager.shared.callPhone', { phone: row.worker.phone })}
         >
           <Phone className="size-[18px]" />
         </a>

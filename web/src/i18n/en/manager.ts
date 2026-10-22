@@ -38,6 +38,8 @@ export const manager = {
     checkedOut: 'Checked out',
     /** Column header. */
     worker: 'Worker',
+    /** A time or status followed by a workplace name: "8:00 AM – 4:00 PM · North Yard". */
+    withSite: '{text} · {site}',
   },
   /** One person on today's board (badge and detail line). */
   status: {
@@ -51,8 +53,8 @@ export const manager = {
     arrived: 'Arrived {time}',
     arrivedLate: 'Arrived {time} · {late} late',
     arrivedNoCheckout: 'Arrived {time} · no check-out',
-    /** {range} is the worked time, e.g. "8:02 AM – 3:30 PM". */
-    leftEarly: '{range} · left {duration} early',
+    /** After the worked time: "8:02 AM – 3:30 PM · left 30m early". */
+    leftEarly: 'left {duration} early',
     shiftStarted: 'Shift started {time}',
     didNotCome: 'Did not come',
     noShift: 'No shift',
@@ -228,6 +230,8 @@ export const manager = {
     timeZone: 'Times are in the workplace time zone ({tz}).',
     /** Shift times in the narrow week grid, e.g. "7a–3:30p" or "07:00–15:30" (no spaces, so they fit). */
     chipRange: '{from}–{to}',
+    /** Workplace and the note for the worker: "North Yard · Bring safety boots". */
+    siteNote: '{site} · {note}',
   },
   hours: {
     title: 'Hours',
@@ -296,6 +300,7 @@ export const manager = {
       /** After the username: "@aisha · turned off". */
       off: 'turned off',
       atWorkSince: 'At work since {time}',
+      atWorkSinceAt: 'At work since {time} · {site}',
       presenceAsked: 'Asked to confirm location',
       presenceHint: 'You can ask them to prove they are still at the workplace.',
       recent: 'Attendance, last 14 days',

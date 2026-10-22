@@ -1,7 +1,7 @@
 import type { LiveRow, LiveStatus } from '../../../../shared/types';
 import type { Tone } from '../../components/ui';
 import { fmtDuration, fmtTime } from '../../lib/format';
-import { t } from '../../lib/i18n';
+import { isolate, t } from '../../lib/i18n';
 
 export const STATUS_TONE: Record<LiveStatus, Tone> = {
   on_site: 'green',
@@ -41,7 +41,8 @@ export function statusDetail(row: LiveRow, tz: string): string {
         : t('manager.status.arrived', { time: fmtTime(e?.clockInAt, tz) });
     case 'checked_out': {
       const range = t('common.range', { from: fmtTime(e?.clockInAt, tz), to: fmtTime(e?.clockOutAt, tz) });
-      return row.leftEarlyMinutes ? t('manager.status.leftEarly', { range, duration: fmtDuration(row.leftEarlyMinutes) }) : range;
+      if (!row.leftEarlyMinutes) return range;
+      return `${range}${t('common.separator')}${t('manager.status.leftEarly', { duration: fmtDuration(row.leftEarlyMinutes) })}`;
     }
     case 'missing_checkout':
       return t('manager.status.arrivedNoCheckout', { time: fmtTime(e?.clockInAt, tz) });
@@ -56,6 +57,7 @@ export function statusDetail(row: LiveRow, tz: string): string {
 
 export function shiftLine(row: LiveRow, tz: string): string {
   if (!row.shift) return row.entry?.siteName ? t('manager.status.noShiftAt', { site: row.entry.siteName }) : t('manager.status.noShift');
+  // A range is joined, not passed into another message: nested isolation would flip it in right-to-left languages.
   const time = t('common.range', { from: fmtTime(row.shift.startsAt, tz), to: fmtTime(row.shift.endsAt, tz) });
-  return `${time}${t('common.separator')}${row.shift.siteName}`;
+  return `${time}${t('common.separator')}${isolate(row.shift.siteName)}`;
 }
