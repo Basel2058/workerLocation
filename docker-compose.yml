@@ -1,0 +1,43 @@
+# Production setup: the app plus Caddy, which gets a free HTTPS certificate automatically.
+# HTTPS is required — phones only share location and camera with secure sites.
+#
+#   cp .env.example .env    # set DOMAIN and the first developer password
+#   docker compose up -d
+#
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      APP_NAME: ${APP_NAME:-OnSite}
+      # Caddy is the only proxy in front of the app (one hop), so the real client address is trusted.
+      TRUST_PROXY: "1"
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-admin@example.com}
+      BOOTSTRAP_DEV_USERNAME: ${BOOTSTRAP_DEV_USERNAME:-developer}
+      BOOTSTRAP_DEV_PASSWORD: ${BOOTSTRAP_DEV_PASSWORD:-}
+      MAP_TILE_URL: ${MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
+    volumes:
+      - onsite-data:/data
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env to the domain that points to this server}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  onsite-data:
+  caddy-data:
+  caddy-config:
