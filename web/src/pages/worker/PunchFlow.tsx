@@ -54,6 +54,7 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
   const [requestNote, setRequestNote] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [changed, setChanged] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const sentRef = useRef(false);
@@ -116,14 +117,23 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
     const video = videoRef.current;
     if (!video) return;
     let cancelled = false;
+    setCameraReady(false);
+    const markReady = () => !cancelled && video.videoWidth > 0 && setCameraReady(true);
+    video.addEventListener('loadeddata', markReady);
+    video.addEventListener('playing', markReady);
     startCamera(video)
       .then((stream) => {
         if (cancelled) stopCamera(stream);
-        else streamRef.current = stream;
+        else {
+          streamRef.current = stream;
+          markReady();
+        }
       })
       .catch((err) => !cancelled && fail(err instanceof CameraError ? cameraFailureText[err.kind] : { title: 'Camera problem', body: errorMessage(err) }));
     return () => {
       cancelled = true;
+      video.removeEventListener('loadeddata', markReady);
+      video.removeEventListener('playing', markReady);
       stopCamera(streamRef.current);
       streamRef.current = null;
     };
@@ -198,7 +208,8 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
 
   const takePhoto = () => {
     const video = videoRef.current;
-    if (!video) return;
+    // Ignore taps until the camera shows a picture.
+    if (!video || !cameraReady || !video.videoWidth) return;
     try {
       const shot = captureFrame(video);
       if (shot.brightness < 28) {
@@ -270,10 +281,11 @@ export function PunchFlow({ kind, presenceId, timezone, clockInAt, onClose }: Pr
             {!photo && (
               <button
                 onClick={takePhoto}
-                className="mt-8 grid size-20 place-items-center rounded-full bg-white text-slate-900 shadow-pop ring-4 ring-brand/40 transition-transform active:scale-95"
-                aria-label="Take photo"
+                disabled={!cameraReady}
+                className="mt-8 grid size-20 place-items-center rounded-full bg-white text-slate-900 shadow-pop ring-4 ring-brand/40 transition-transform active:scale-95 disabled:opacity-50"
+                aria-label={cameraReady ? 'Take photo' : 'Starting camera'}
               >
-                <Camera className="size-8" />
+                {cameraReady ? <Camera className="size-8" /> : <span className="size-7 animate-spin rounded-full border-[3px] border-slate-300 border-t-slate-700" />}
               </button>
             )}
           </div>

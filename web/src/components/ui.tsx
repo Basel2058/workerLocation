@@ -1,6 +1,9 @@
 import { LoaderCircle } from 'lucide-react';
 import {
+  cloneElement,
   forwardRef,
+  Fragment,
+  isValidElement,
   useId,
   type AnchorHTMLAttributes,
   type ButtonHTMLAttributes,
@@ -389,6 +392,10 @@ export function Notice({
 const fieldBase =
   'block w-full rounded-xl bg-surface px-3.5 text-ink ring-1 ring-inset ring-line-strong/80 placeholder:text-faint transition-shadow focus:ring-2 focus:ring-brand focus:outline-none disabled:opacity-60';
 
+/**
+ * Label + control + hint/error. The label is linked to the control automatically: a single form control
+ * child gets a generated id (unless it has one) and is described by the hint or error text.
+ */
 export function Field({
   label,
   hint,
@@ -406,19 +413,34 @@ export function Field({
   className?: string;
   optional?: boolean;
 }) {
+  const autoId = useId();
+  const noteId = `${autoId}-note`;
+  let control = children;
+  let targetId = htmlFor;
+  if (isValidElement<{ id?: string; 'aria-describedby'?: string }>(children) && children.type !== Fragment) {
+    targetId = children.props.id ?? htmlFor ?? autoId;
+    control = cloneElement(children, {
+      id: targetId,
+      'aria-describedby': error || hint ? noteId : children.props['aria-describedby'],
+    });
+  }
   return (
     <div className={className}>
       {label && (
-        <label htmlFor={htmlFor} className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px] font-medium text-ink-2">
+        <label htmlFor={targetId} className="mb-1.5 flex items-baseline justify-between gap-2 text-[13px] font-medium text-ink-2">
           <span>{label}</span>
           {optional && <span className="text-xs font-normal text-faint">Optional</span>}
         </label>
       )}
-      {children}
+      {control}
       {error ? (
-        <p className="mt-1.5 text-[13px] text-rose-600 dark:text-rose-400">{error}</p>
+        <p id={noteId} className="mt-1.5 text-[13px] text-rose-600 dark:text-rose-400">
+          {error}
+        </p>
       ) : hint ? (
-        <p className="mt-1.5 text-[13px] text-muted">{hint}</p>
+        <p id={noteId} className="mt-1.5 text-[13px] text-muted">
+          {hint}
+        </p>
       ) : null}
     </div>
   );

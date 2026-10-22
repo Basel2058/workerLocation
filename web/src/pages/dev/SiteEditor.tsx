@@ -238,10 +238,10 @@ export function SiteEditor({
             hint="Public IP addresses of the workplace Wi-Fi, one per line. Check-ins from them are trusted more, even with weak GPS indoors."
           >
             <Textarea rows={3} value={d.networks} onChange={(e) => set({ networks: e.target.value })} placeholder="203.0.113.10" className="font-mono text-sm" />
-            <Button size="sm" variant="ghost" icon={Wifi} className="mt-1" onClick={() => void addMyIp()}>
-              Add my current address
-            </Button>
           </Field>
+          <Button size="sm" variant="ghost" icon={Wifi} className="-mt-2" onClick={() => void addMyIp()}>
+            Add my current address
+          </Button>
           <Switch
             checked={d.requireNetwork}
             onChange={(v) => set({ requireNetwork: v })}

@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Building2, ExternalLink, MapPin, Pencil, Plus, Trash2, Users, Wifi } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import type { CompanySettings, CompanySummary, CreatedCredentials, Site, UserRecord } from '../../../../shared/types';
 import { Dialog, useConfirm } from '../../components/Dialog';
@@ -333,10 +333,11 @@ function NumberField({
   max: number;
   unit: string;
 }) {
+  const id = useId();
   return (
-    <Field label={label} hint={hint}>
+    <Field label={label} hint={hint} htmlFor={id}>
       <div className="flex items-center gap-2">
-        <Input type="number" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-28" />
+        <Input id={id} type="number" min={min} max={max} value={value} onChange={(e) => onChange(Number(e.target.value))} className="w-28" />
         <span className="text-sm text-muted">{unit}</span>
       </div>
     </Field>

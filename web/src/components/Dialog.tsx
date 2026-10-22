@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button, cx, IconButton, Input, type ButtonVariant } from './ui';
 
 /**
@@ -27,11 +27,19 @@ export function Dialog({
   bare?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const id = useId();
 
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
+    if (open && !d.open) {
+      d.showModal();
+      // Start in the first field of a form instead of on the close button.
+      const field = d.querySelector<HTMLElement>(
+        '[data-autofocus], input:not([type=hidden]):not([type=checkbox]):not([type=range]):not([disabled]), textarea:not([disabled])',
+      );
+      field?.focus();
+    }
     if (!open && d.open) d.close();
   }, [open]);
 
@@ -40,6 +48,8 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
+      aria-labelledby={title ? `${id}-title` : undefined}
+      aria-describedby={description ? `${id}-desc` : undefined}
       onCancel={(e) => {
         e.preventDefault();
         onClose();
@@ -62,8 +72,16 @@ export function Dialog({
           {(title || description) && (
             <div className="flex shrink-0 items-start justify-between gap-3 px-5 pt-3 pb-2 sm:pt-5">
               <div className="min-w-0">
-                {title && <h2 className="text-lg font-semibold tracking-tight">{title}</h2>}
-                {description && <p className="mt-0.5 text-sm text-muted">{description}</p>}
+                {title && (
+                  <h2 id={`${id}-title`} className="text-lg font-semibold tracking-tight">
+                    {title}
+                  </h2>
+                )}
+                {description && (
+                  <p id={`${id}-desc`} className="mt-0.5 text-sm text-muted">
+                    {description}
+                  </p>
+                )}
               </div>
               <IconButton icon={X} label="Close" size="sm" onClick={onClose} className="-mr-1" />
             </div>

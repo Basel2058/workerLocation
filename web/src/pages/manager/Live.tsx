@@ -86,7 +86,7 @@ export function LivePage() {
         </div>
       </div>
 
-      <div className="-mx-4 mb-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
+      <div className="-mx-4 mb-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 scrollbar-none sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 lg:grid-cols-5">
         {[
           { f: 'on_site' as Filter, label: 'On site', value: c.onSite, tone: 'green' as const, hint: `of ${c.total} today` },
           { f: 'missing' as Filter, label: 'Not arrived', value: c.late + c.absent, tone: 'red' as const, hint: c.absent ? `${c.absent} absent` : 'shift already started' },
