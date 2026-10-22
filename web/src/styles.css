@@ -1,0 +1,202 @@
+@import 'tailwindcss';
+
+/* Design tokens. Components use these semantic colors so light and dark mode stay consistent. */
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f3f4f7;
+  --color-surface-3: #e9ecf1;
+  --color-line: #e4e7ec;
+  --color-line-strong: #d0d5dd;
+  --color-ink: #101828;
+  --color-ink-2: #344054;
+  --color-muted: #667085;
+  --color-faint: #98a2b3;
+
+  --color-brand: #0f766e;
+  --color-brand-strong: #115e59;
+  --color-brand-soft: #e6f4f2;
+  --color-on-brand: #ffffff;
+
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+  --shadow-pop: 0 12px 32px -8px rgb(16 24 40 / 0.18), 0 4px 12px -4px rgb(16 24 40 / 0.08);
+
+  --animate-pulse-ring: pulse-ring 2.2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+  --animate-pop-in: pop-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+  --animate-fade-up: fade-up 0.32s ease-out both;
+  --animate-sheet-up: sheet-up 0.28s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+
+  @keyframes pulse-ring {
+    0% {
+      transform: scale(0.85);
+      opacity: 0.55;
+    }
+    100% {
+      transform: scale(1.6);
+      opacity: 0;
+    }
+  }
+  @keyframes pop-in {
+    0% {
+      transform: scale(0.6);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes fade-up {
+    0% {
+      transform: translateY(6px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes sheet-up {
+    0% {
+      transform: translateY(24px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0b0e12;
+    --color-surface: #13171d;
+    --color-surface-2: #1a1f26;
+    --color-surface-3: #232932;
+    --color-line: #252b34;
+    --color-line-strong: #343c47;
+    --color-ink: #eef1f5;
+    --color-ink-2: #c9d0da;
+    --color-muted: #98a2b3;
+    --color-faint: #6b7686;
+    --color-brand: #2dd4bf;
+    --color-brand-strong: #5eead4;
+    --color-brand-soft: #0f2e2b;
+    --color-on-brand: #042f2e;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-pop: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    font-feature-settings: 'cv11', 'ss01';
+    overscroll-behavior-y: none;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-brand) 25%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+  button,
+  [role='button'] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: default;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* stops iOS zooming into fields */
+  }
+  @media (min-width: 640px) {
+    input,
+    select,
+    textarea {
+      font-size: 14px;
+    }
+  }
+  dialog::backdrop {
+    background: rgb(10 14 20 / 0.45);
+    backdrop-filter: blur(2px);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@utility safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+}
+@utility safe-top {
+  padding-top: max(env(safe-area-inset-top), 0px);
+}
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Leaflet tweaks so the map matches the app. */
+.leaflet-container {
+  font: inherit;
+  background: var(--color-surface-2);
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.leaflet-popup-tip {
+  background: var(--color-surface);
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: color-mix(in oklab, var(--color-surface) 80%, transparent) !important;
+  color: var(--color-muted);
+}
+.leaflet-control-attribution a {
+  color: var(--color-muted);
+}
+.leaflet-bar a {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--color-line);
+}
+.worker-marker {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 650;
+  border: 2.5px solid #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.28);
+  letter-spacing: 0.01em;
+}
+@media (prefers-color-scheme: dark) {
+  .leaflet-tile-pane {
+    filter: brightness(0.75) contrast(1.1) saturate(0.7);
+  }
+}

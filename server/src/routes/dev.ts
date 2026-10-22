@@ -168,7 +168,10 @@ export default async function devRoutes(app: FastifyInstance) {
     const company = getCompany(db, idParam((req.params as { id: string }).id));
     const { confirmName } = z.object({ confirmName: z.string() }).parse(req.body ?? {});
     if (confirmName.trim() !== company.name) throw badRequest('Type the company name exactly to confirm.');
-    db.prepare('DELETE FROM companies WHERE id = ?').run(company.id);
+    db.transaction(() => {
+      db.prepare('DELETE FROM companies WHERE id = ?').run(company.id);
+      db.prepare('DELETE FROM security_events WHERE company_id = ?').run(company.id);
+    })();
     audit(db, actor, 'company.delete', {
       companyId: company.id,
       entity: 'company',

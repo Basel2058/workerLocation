@@ -157,6 +157,7 @@ export default async function workerRoutes(app: FastifyInstance) {
       weekMinutes: weekRows.reduce((sum, e) => sum + (entryMinutes(e) ?? 0), 0),
       presenceCheck: pendingPresence(db, user.id),
       notices,
+      selfieMode: companySettings(company).selfieMode,
     };
   });
 

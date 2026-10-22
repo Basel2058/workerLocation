@@ -366,6 +366,7 @@ export interface WorkerHome {
   weekMinutes: number;
   presenceCheck: PresenceCheck | null;
   notices: string[];
+  selfieMode: SelfieMode;
 }
 
 export interface WorkerHistoryDay {

@@ -163,6 +163,15 @@ describe('check in and out', () => {
     expect(home.body.notices[0]).toContain('did not accept');
   });
 
+  it('accepts the same photo again when a rejected punch is sent as a request', async () => {
+    const { client, phone } = await workerWithPhone(app, s.workers[0]!);
+    const selfie = fakeSelfie();
+    expect((await punch(client, phone, 'in', farAway, { selfie })).body.result).toBe('rejected');
+    await punch(client, phone, 'in', farAway, { selfie, request: { note: 'At the supplier' } });
+    const flags = JSON.parse((app.ctx.db.prepare("SELECT flags FROM punches WHERE result = 'review'").get() as { flags: string }).flags);
+    expect(flags).not.toContain('SELFIE_DUPLICATE');
+  });
+
   it('refuses replayed and tampered requests', async () => {
     const { client, phone } = await workerWithPhone(app, s.workers[0]!);
     const ch = await client.post('/api/punch/challenge', { type: 'in', keyId: phone.keyId });
@@ -228,6 +237,7 @@ describe('check in and out', () => {
     const selfie = fakeSelfie();
     await punch(client, phone, 'in', inside, { selfie });
     backdatePunches(app, s.workers[0]!.id, 60);
+    app.ctx.db.prepare('UPDATE selfies SET created_at = ?').run(new Date(Date.now() - 60 * 60_000).toISOString());
     const out = await punch(client, phone, 'out', inside, { selfie });
     expect(out.body.result).toBe('review');
     const flags = JSON.parse((app.ctx.db.prepare("SELECT flags FROM punches WHERE type = 'out'").get() as { flags: string }).flags);

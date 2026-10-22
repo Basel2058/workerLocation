@@ -85,6 +85,17 @@ export function decodeSelfie(dataUrl: string): Buffer {
   return data;
 }
 
+/**
+ * True when the photo is byte-identical to an earlier one. The worker's own photo from the last 15 minutes
+ * is allowed again (e.g. a rejected check-in re-sent to the manager as a request).
+ */
+export function isReusedSelfie(db: DB, hash: string, userId: number): boolean {
+  const since = new Date(Date.now() - 15 * 60_000).toISOString();
+  return !!db
+    .prepare('SELECT 1 FROM selfies WHERE sha256 = ? AND NOT (user_id = ? AND created_at > ?) LIMIT 1')
+    .get(hash, userId, since);
+}
+
 export function storeSelfie(db: DB, companyId: number, userId: number, data: Buffer, hash: string): string {
   const id = randomToken(16);
   db.prepare(
@@ -214,7 +225,7 @@ export function submitPunch(ctx: PunchContext, envelope: SignedEnvelope): PunchO
   if (challenge.require_selfie && !payload.selfie) throw badRequest('A photo is needed.', 'SELFIE_REQUIRED');
   const selfie = payload.selfie ? decodeSelfie(payload.selfie) : null;
   const selfieHash = selfie ? sha256Hex(selfie) : null;
-  const selfieDuplicate = !!selfieHash && !!db.prepare('SELECT 1 FROM selfies WHERE sha256 = ? LIMIT 1').get(selfieHash);
+  const selfieDuplicate = !!selfieHash && isReusedSelfie(db, selfieHash, user.id);
 
   const settings = companySettings(company);
   const shift: ShiftRow | null =

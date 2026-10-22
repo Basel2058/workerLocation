@@ -9,7 +9,7 @@ import { companySettings, listSites } from './companies';
 import { requireUsableDevice } from './devices';
 import { openEntry } from './entries';
 import { audit, securityEvent, type Actor } from './logs';
-import { decodeSelfie, riskHistory, storeSelfie, toRiskSite, verifySignedPayload, type PunchContext } from './punch';
+import { decodeSelfie, isReusedSelfie, riskHistory, storeSelfie, toRiskSite, verifySignedPayload, type PunchContext } from './punch';
 import type { PushService } from './push';
 import { evaluateRisk } from './risk';
 import { getCompanyWorker } from './users';
@@ -143,7 +143,7 @@ export function submitPresence(ctx: PunchContext, push: PushService, envelope: S
   if (challenge.require_selfie && !payload.selfie) throw badRequest('A photo is needed.', 'SELFIE_REQUIRED');
   const selfie = payload.selfie ? decodeSelfie(payload.selfie) : null;
   const selfieHash = selfie ? sha256Hex(selfie) : null;
-  const selfieDuplicate = !!selfieHash && !!db.prepare('SELECT 1 FROM selfies WHERE sha256 = ? LIMIT 1').get(selfieHash);
+  const selfieDuplicate = !!selfieHash && isReusedSelfie(db, selfieHash, user.id);
 
   const entry = check.entry_id
     ? (db.prepare('SELECT site_id FROM time_entries WHERE id = ?').get(check.entry_id) as { site_id: number | null } | undefined)
