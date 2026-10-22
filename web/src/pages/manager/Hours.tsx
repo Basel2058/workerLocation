@@ -7,6 +7,7 @@ import { useToast } from '../../components/Toast';
 import { Avatar, Badge, Button, Card, cx, EmptyState, ErrorBox, Field, Input, PageHeader, PageLoader, Select, Stat, Switch, Textarea } from '../../components/ui';
 import { downloadFile, errorMessage, qs } from '../../lib/api';
 import { addDays, fmtDay, fmtDuration, fmtHours, fmtTime, localDateOf, todayIn, weekStartOf } from '../../lib/format';
+import { t } from '../../lib/i18n';
 import { useManager } from './context';
 import { EntryEditor, type EntryEditorTarget } from './EntryEditor';
 
@@ -58,41 +59,39 @@ export function HoursPage() {
   return (
     <div className="animate-fade-up">
       <PageHeader
-        title="Hours"
-        description="Worked time per person. Click a person to see and fix their check-ins."
+        title={t('manager.hours.title')}
+        description={t('manager.hours.description')}
         actions={
           <>
             <Button icon={Plus} onClick={() => setPickWorker(true)}>
-              Add attendance
+              {t('manager.shared.addAttendance')}
             </Button>
             <Button icon={Download} onClick={() => void download('summary')}>
-              Summary CSV
+              {t('manager.hours.summaryCsv')}
             </Button>
             <Button icon={Download} onClick={() => void download('entries')}>
-              All check-ins CSV
+              {t('manager.hours.entriesCsv')}
             </Button>
           </>
         }
       />
 
       <div className="mb-5 flex flex-wrap items-end gap-3">
-        <Select value={preset} onChange={(e) => setPreset(e.target.value as Preset)} className="w-auto" aria-label="Period">
-          <option value="this-week">This week</option>
-          <option value="last-week">Last week</option>
-          <option value="this-month">This month</option>
-          <option value="last-month">Last month</option>
-          <option value="custom">Choose dates…</option>
+        <Select value={preset} onChange={(e) => setPreset(e.target.value as Preset)} className="w-auto" aria-label={t('manager.hours.period')}>
+          <option value="this-week">{t('manager.hours.presets.thisWeek')}</option>
+          <option value="last-week">{t('manager.hours.presets.lastWeek')}</option>
+          <option value="this-month">{t('manager.hours.presets.thisMonth')}</option>
+          <option value="last-month">{t('manager.hours.presets.lastMonth')}</option>
+          <option value="custom">{t('manager.hours.presets.custom')}</option>
         </Select>
         {preset === 'custom' ? (
           <div className="flex items-center gap-2">
-            <Input type="date" value={custom.from} max={custom.to} onChange={(e) => setCustom({ ...custom, from: e.target.value })} className="w-auto" aria-label="From" />
+            <Input type="date" value={custom.from} max={custom.to} onChange={(e) => setCustom({ ...custom, from: e.target.value })} className="w-auto" aria-label={t('manager.hours.from')} />
             <span className="text-muted">–</span>
-            <Input type="date" value={custom.to} min={custom.from} onChange={(e) => setCustom({ ...custom, to: e.target.value })} className="w-auto" aria-label="To" />
+            <Input type="date" value={custom.to} min={custom.from} onChange={(e) => setCustom({ ...custom, to: e.target.value })} className="w-auto" aria-label={t('manager.hours.to')} />
           </div>
         ) : (
-          <p className="pb-2.5 text-sm text-muted">
-            {fmtDay(range.from)} – {fmtDay(range.to)}
-          </p>
+          <p className="pb-2.5 text-sm text-muted">{t('common.range', { from: fmtDay(range.from), to: fmtDay(range.to) })}</p>
         )}
       </div>
 
@@ -103,25 +102,25 @@ export function HoursPage() {
       ) : (
         <>
           <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Stat label="Worked" value={`${fmtHours(sheet.data.totals.workedMinutes)} h`} icon={Clock3} />
-            <Stat label="Planned" value={`${fmtHours(sheet.data.totals.scheduledMinutes)} h`} />
-            <Stat label="Late arrivals" value={sheet.data.totals.lateCount} tone="amber" />
-            <Stat label="Absences" value={sheet.data.totals.absentCount} tone="red" />
+            <Stat label={t('manager.hours.worked')} value={t('manager.hours.hoursValue', { hours: fmtHours(sheet.data.totals.workedMinutes) })} icon={Clock3} />
+            <Stat label={t('manager.hours.planned')} value={t('manager.hours.hoursValue', { hours: fmtHours(sheet.data.totals.scheduledMinutes) })} />
+            <Stat label={t('manager.hours.lateArrivals')} value={sheet.data.totals.lateCount} tone="amber" />
+            <Stat label={t('manager.hours.absences')} value={sheet.data.totals.absentCount} tone="red" />
           </div>
 
           <Card className="overflow-hidden">
             {sheet.data.rows.length === 0 ? (
-              <EmptyState icon={Clock3} title="No workers" />
+              <EmptyState icon={Clock3} title={t('manager.hours.noWorkers')} />
             ) : (
               <>
                 <div className="hidden grid-cols-[minmax(0,2fr)_repeat(6,minmax(0,1fr))_24px] gap-3 border-b border-line px-5 py-3 text-xs font-medium text-muted md:grid">
-                  <span>Worker</span>
-                  <span className="text-end">Worked</span>
-                  <span className="text-end">Planned</span>
-                  <span className="text-end">Days</span>
-                  <span className="text-end">Late</span>
-                  <span className="text-end">Absent</span>
-                  <span className="text-end">To fix</span>
+                  <span>{t('manager.shared.worker')}</span>
+                  <span className="text-end">{t('manager.hours.worked')}</span>
+                  <span className="text-end">{t('manager.hours.planned')}</span>
+                  <span className="text-end">{t('manager.hours.days')}</span>
+                  <span className="text-end">{t('manager.hours.late')}</span>
+                  <span className="text-end">{t('manager.hours.absent')}</span>
+                  <span className="text-end">{t('manager.hours.toFix')}</span>
                   <span />
                 </div>
                 <div className="divide-y divide-line">
@@ -136,7 +135,11 @@ export function HoursPage() {
                         <span className="min-w-0">
                           <span className="block truncate font-medium">{r.worker.name}</span>
                           <span className="block truncate text-xs text-muted md:hidden">
-                            {r.daysWorked} days · {r.lateCount} late · {r.absentCount} absent
+                            {[
+                              t('manager.hours.daysCount', { count: r.daysWorked }),
+                              t('manager.hours.lateCount', { count: r.lateCount }),
+                              t('manager.hours.absentCount', { count: r.absentCount }),
+                            ].join(t('common.separator'))}
                           </span>
                         </span>
                       </span>
@@ -207,7 +210,7 @@ function WorkerEntries({
     if (!restore) return;
     try {
       await m.post(`/api/m/entries/${restore.id}/restore`, { reason });
-      toast.success('Restored');
+      toast.success(t('manager.hours.restored'));
       setRestore(null);
       setReason('');
       await qc.invalidateQueries({ queryKey: m.key() });
@@ -218,7 +221,7 @@ function WorkerEntries({
 
   return (
     <>
-      <Dialog open={!!worker && !restore} onClose={onClose} size="lg" title={worker?.name} description={`${fmtDay(range.from)} – ${fmtDay(range.to)}`}>
+      <Dialog open={!!worker && !restore} onClose={onClose} size="lg" title={worker?.name} description={t('common.range', { from: fmtDay(range.from), to: fmtDay(range.to) })}>
         {q.isPending ? (
           <PageLoader />
         ) : q.isError ? (
@@ -227,12 +230,12 @@ function WorkerEntries({
           <div>
             <div className="mb-3 flex items-center justify-between gap-3">
               <Button size="sm" icon={Plus} onClick={() => worker && onAdd(worker)}>
-                Add attendance
+                {t('manager.shared.addAttendance')}
               </Button>
-              {removedCount > 0 && <Switch checked={showRemoved} onChange={setShowRemoved} label={`Show removed (${removedCount})`} />}
+              {removedCount > 0 && <Switch checked={showRemoved} onChange={setShowRemoved} label={t('manager.hours.showRemoved', { count: removedCount })} />}
             </div>
             {entries.length === 0 ? (
-              <EmptyState title="No check-ins in this period" />
+              <EmptyState title={t('manager.hours.noEntries')} />
             ) : (
               <div className="divide-y divide-line rounded-xl ring-1 ring-line">
                 {entries.map((e) => (
@@ -242,27 +245,30 @@ function WorkerEntries({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="tabular text-sm font-medium">
-                        {fmtTime(e.clockInAt, m.tz)} → {e.clockOutAt ? fmtTime(e.clockOutAt, m.tz) : e.status === 'open' ? 'now' : '—'}
+                        {t('common.arrow', {
+                          from: fmtTime(e.clockInAt, m.tz),
+                          to: e.clockOutAt ? fmtTime(e.clockOutAt, m.tz) : e.status === 'open' ? t('common.now') : t('common.empty'),
+                        })}
                         <span className="ms-2 font-normal text-muted">{e.minutes !== null ? fmtDuration(e.minutes) : ''}</span>
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-1">
                         {e.siteName && <span className="me-1 text-xs text-muted">{e.siteName}</span>}
-                        {e.status === 'void' && <Badge tone="gray">Removed</Badge>}
-                        {e.status === 'open' && <Badge tone="green">At work</Badge>}
-                        {e.status === 'incomplete' && <Badge tone="amber">No check-out</Badge>}
-                        {e.lateMinutes !== null && <Badge tone="amber">{fmtDuration(e.lateMinutes)} late</Badge>}
-                        {e.needsReview && <Badge tone="violet">To confirm</Badge>}
-                        {e.source === 'manual' && <Badge tone="blue">Added by hand</Badge>}
-                        {e.editedByName && e.source !== 'manual' && <Badge tone="gray">Edited by {e.editedByName}</Badge>}
+                        {e.status === 'void' && <Badge tone="gray">{t('manager.hours.removed')}</Badge>}
+                        {e.status === 'open' && <Badge tone="green">{t('manager.hours.atWork')}</Badge>}
+                        {e.status === 'incomplete' && <Badge tone="amber">{t('manager.shared.noCheckOut')}</Badge>}
+                        {e.lateMinutes !== null && <Badge tone="amber">{t('manager.shared.lateBy', { duration: fmtDuration(e.lateMinutes) })}</Badge>}
+                        {e.needsReview && <Badge tone="violet">{t('manager.shared.toConfirm')}</Badge>}
+                        {e.source === 'manual' && <Badge tone="blue">{t('manager.hours.addedByHand')}</Badge>}
+                        {e.editedByName && e.source !== 'manual' && <Badge tone="gray">{t('manager.hours.editedBy', { name: e.editedByName })}</Badge>}
                       </div>
                     </div>
                     {e.status === 'void' ? (
                       <Button size="sm" variant="ghost" icon={RotateCcw} onClick={() => setRestore(e)}>
-                        Restore
+                        {t('manager.hours.restore')}
                       </Button>
                     ) : (
                       <Button size="sm" variant="ghost" icon={Pencil} onClick={() => onEdit(e)}>
-                        Fix
+                        {t('manager.shared.fix')}
                       </Button>
                     )}
                   </div>
@@ -275,21 +281,21 @@ function WorkerEntries({
       <Dialog
         open={!!restore}
         onClose={() => setRestore(null)}
-        title="Restore attendance"
+        title={t('manager.hours.restoreTitle')}
         size="sm"
         footer={
           <>
             <Button variant="ghost" onClick={() => setRestore(null)}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button variant="brand" disabled={reason.trim().length < 3} onClick={() => void doRestore()}>
-              Restore
+              {t('manager.hours.restore')}
             </Button>
           </>
         }
       >
-        <Field label="Reason">
-          <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Why is this attendance correct after all?" />
+        <Field label={t('manager.shared.reason')}>
+          <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('manager.hours.restorePlaceholder')} />
         </Field>
       </Dialog>
     </>
@@ -302,8 +308,8 @@ function PickWorker({ open, onClose, onPick }: { open: boolean; onClose: () => v
   const [q, setQ] = useState('');
   const list = (team.data ?? []).filter((w) => w.active && w.fullName.toLowerCase().includes(q.toLowerCase()));
   return (
-    <Dialog open={open} onClose={onClose} title="Add attendance for…" size="sm">
-      <Input placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+    <Dialog open={open} onClose={onClose} title={t('manager.hours.pickWorker')} size="sm">
+      <Input placeholder={t('common.search')} value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
       <div className="mt-3 max-h-80 divide-y divide-line overflow-y-auto">
         {list.map((w) => (
           <button key={w.id} onClick={() => onPick(w)} className="flex w-full items-center gap-3 px-1 py-2.5 text-start hover:bg-surface-2">

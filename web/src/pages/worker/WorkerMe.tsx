@@ -49,7 +49,7 @@ export function WorkerMe() {
           <p className="truncate text-sm text-muted">
             <Ltr>@{user.username}</Ltr>
             {t('common.separator')}
-            {user.companyName}
+            <bdi>{user.companyName}</bdi>
           </p>
         </div>
       </Card>
@@ -68,9 +68,11 @@ export function WorkerMe() {
           <label htmlFor="worker-language" className="text-sm font-medium text-ink">
             {t('ui.language.label')}
           </label>
-          <p className="mt-0.5 text-[13px] text-muted">{t('ui.language.hint')}</p>
+          <p id="worker-language-hint" className="mt-0.5 text-[13px] text-muted">
+            {t('ui.language.hint')}
+          </p>
         </div>
-        <LanguageSelect id="worker-language" />
+        <LanguageSelect id="worker-language" aria-describedby="worker-language-hint" />
       </Card>
 
       <div className="space-y-2">

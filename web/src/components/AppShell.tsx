@@ -62,7 +62,9 @@ export function AppShell({
         <div className="flex items-center gap-3 px-5 pt-5 pb-4">
           <LogoMark size={34} />
           <div className="min-w-0">
-            <p className="truncate text-[15px] font-semibold text-ink">{title}</p>
+            <p className="truncate text-[15px] font-semibold text-ink">
+              <bdi>{title}</bdi>
+            </p>
             {subtitle && <p className="truncate text-xs text-muted">{subtitle}</p>}
           </div>
         </div>
@@ -112,7 +114,9 @@ export function AppShell({
         <div className="flex h-14 items-center gap-3 px-4">
           <LogoMark size={30} />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] leading-tight font-semibold">{title}</p>
+            <p className="truncate text-[15px] leading-tight font-semibold">
+              <bdi>{title}</bdi>
+            </p>
             {subtitle && <p className="truncate text-[11px] leading-tight text-muted">{subtitle}</p>}
           </div>
           <NavLink to={accountTo} aria-label={t('ui.shell.account')} className="rounded-full">

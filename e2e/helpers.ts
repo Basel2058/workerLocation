@@ -6,13 +6,15 @@ import type { Browser, BrowserContext, Page } from '@playwright/test';
 export const SITE = { latitude: 51.507318, longitude: -0.127492 };
 export const NEAR_SITE = { latitude: 51.507455, longitude: -0.127301 };
 export const FAR_AWAY = { latitude: 51.531245, longitude: -0.101873 };
+export const BY_THE_GATE = { latitude: 51.507391, longitude: -0.127642 };
 
 /**
  * A phone-sized browser context with location and camera allowed. Automation is hidden and the platform
  * matches the phone, as on a real device — otherwise the anti-cheat checks (correctly) flag the browser.
  */
-export async function phoneContext(browser: Browser, location = SITE): Promise<BrowserContext> {
+export async function phoneContext(browser: Browser, location = SITE, locale = 'en-GB'): Promise<BrowserContext> {
   const context = await browser.newContext({
+    locale,
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,
     isMobile: true,

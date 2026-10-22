@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Languages } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type SelectHTMLAttributes } from 'react';
 import { isLocale, LOCALE_INFO, LOCALES, type Locale } from '../../../shared/i18n';
 import { post } from '../lib/api';
 import { useAuth } from '../lib/auth';
@@ -62,12 +62,12 @@ export function LocaleSync() {
   return null;
 }
 
-/** A native select: the phone's own picker is the easiest to use. */
-export function LanguageSelect({ id, className }: { id?: string; className?: string }) {
+/** A native select: the phone's own picker is the easiest to use. Other props (id, aria-*) are passed on. */
+export function LanguageSelect(props: Omit<SelectHTMLAttributes<HTMLSelectElement>, 'value' | 'onChange'>) {
   const { locale } = useI18n();
   const change = useChangeLanguage();
   return (
-    <Select id={id} className={className} value={locale} onChange={(e) => void change(e.target.value as Locale)}>
+    <Select {...props} value={locale} onChange={(e) => void change(e.target.value as Locale)}>
       {LOCALES.map((l) => (
         <option key={l} value={l}>
           {LOCALE_INFO[l].name}

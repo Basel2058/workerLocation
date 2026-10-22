@@ -10,10 +10,10 @@ export interface ManagerApi {
   sites: Site[];
   tz: string;
   pendingReviews: number;
-  get<T>(path: string): Promise<T>;
-  post<T>(path: string, body?: unknown): Promise<T>;
-  patch<T>(path: string, body: unknown): Promise<T>;
-  del<T>(path: string, body?: unknown): Promise<T>;
+  get<T>(path: string): Promise<T>; // i18n-ignore (generic, not text)
+  post<T>(path: string, body?: unknown): Promise<T>; // i18n-ignore
+  patch<T>(path: string, body: unknown): Promise<T>; // i18n-ignore
+  del<T>(path: string, body?: unknown): Promise<T>; // i18n-ignore
   /** Query key scoped to the company being managed. */
   key(...parts: unknown[]): unknown[];
 }
