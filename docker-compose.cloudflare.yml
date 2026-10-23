@@ -1,0 +1,36 @@
+# Production setup behind a Cloudflare Tunnel: Cloudflare gives the HTTPS address, and the server opens no
+# ports at all (cloudflared connects out to Cloudflare). See README → "Deploy with Cloudflare".
+#
+#   cp .env.example .env    # set TUNNEL_TOKEN and the first owner password
+#   docker compose -f docker-compose.cloudflare.yml up -d
+#
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      APP_NAME: ${APP_NAME:-OnSite}
+      # cloudflared is the only proxy in front of the app (one hop). Cloudflare adds the visitor's real
+      # address, and nothing else can reach the app, so the address cannot be faked.
+      TRUST_PROXY: "1"
+      CONTACT_EMAIL: ${CONTACT_EMAIL:-admin@example.com}
+      BOOTSTRAP_DEV_USERNAME: ${BOOTSTRAP_DEV_USERNAME:-developer}
+      BOOTSTRAP_DEV_PASSWORD: ${BOOTSTRAP_DEV_PASSWORD:-}
+      MAP_TILE_URL: ${MAP_TILE_URL:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
+    volumes:
+      - onsite-data:/data
+    expose:
+      - "3000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      - app
+    # In the Cloudflare dashboard the tunnel's public hostname points to http://app:3000.
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Set TUNNEL_TOKEN in .env (Cloudflare Zero Trust → Networks → Tunnels)}
+
+volumes:
+  onsite-data:

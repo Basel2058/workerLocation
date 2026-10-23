@@ -89,7 +89,31 @@ Without the demo, the first start creates the owner account and prints its one-t
 
 ## Deploy
 
-The simplest production setup is Docker with Caddy, which gets a free HTTPS certificate automatically.
+### Recommended: a small server + Cloudflare Tunnel
+
+Cloudflare gives the app its HTTPS address for free and the server opens no ports to the internet.
+
+1. **Server:** rent a small Linux server (Ubuntu, 1 vCPU / 1 GB RAM is plenty for hundreds of workers) and install
+   Docker: `curl -fsSL https://get.docker.com | sh`.
+2. **Domain:** add your domain to Cloudflare (free plan) and use Cloudflare's name servers.
+3. **Tunnel:** in Cloudflare, open **Zero Trust → Networks → Tunnels → Create a tunnel → Cloudflared**. Copy the token
+   from the install command (the long text after `--token`). Under **Public hostname**, add e.g. `onsite.yourcompany.com`
+   with service **HTTP** and URL **`app:3000`**.
+4. **App:** on the server:
+
+   ```bash
+   git clone <this repository> onsite && cd onsite
+   cp .env.example .env     # set TUNNEL_TOKEN, CONTACT_EMAIL and BOOTSTRAP_DEV_PASSWORD
+   docker compose -f docker-compose.cloudflare.yml up -d
+   ```
+5. Open `https://onsite.yourcompany.com` and sign in as `developer` with the password from `.env`.
+
+Update later with `git pull && docker compose -f docker-compose.cloudflare.yml up -d --build`. Keep a copy of the
+backups off the server: download one from the owner console now and then, or copy `/data/backups`.
+
+### Alternative: Docker with Caddy (no Cloudflare)
+
+Caddy gets a free HTTPS certificate automatically; the server needs ports 80 and 443 open.
 
 1. Get a small Linux server (1 vCPU / 1 GB RAM is plenty for hundreds of workers) and point a domain name at it.
 2. Install Docker, copy this repository to the server, then:
