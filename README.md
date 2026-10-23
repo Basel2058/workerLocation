@@ -89,7 +89,40 @@ Without the demo, the first start creates the owner account and prints its one-t
 
 ## Deploy
 
-### Recommended: a small server + Cloudflare Tunnel
+### Free: Oracle Cloud "Always Free" server + free DuckDNS address
+
+Costs nothing, runs 24/7 and keeps its data. Oracle's free ARM server is far stronger than this app needs.
+
+1. **Account:** sign up at oracle.com/cloud/free (a card is needed for identity checks; Always Free use is not charged).
+   Pick the **home region closest to your workers** (e.g. Jerusalem, Dubai, Jeddah, Frankfurt) — it cannot be changed.
+   Optional but recommended: upgrade the account to *Pay As You Go* (still free within Always Free limits; protects
+   the server from being reclaimed as "idle") and set a **budget alert of $1** under Billing → Budgets.
+2. **Server:** Compute → Instances → Create: image **Ubuntu 24.04**, shape **Ampere (VM.Standard.A1.Flex)** with
+   1–2 OCPU and 6–12 GB RAM, and add your SSH key. ("Out of capacity"? Try again later or another availability domain.)
+3. **Open the web ports:** in the instance's subnet → Security List → add ingress rules for TCP **80** and **443**
+   from `0.0.0.0/0`. Then on the server (Oracle's Ubuntu also blocks them inside):
+
+   ```bash
+   sudo iptables -I INPUT 6 -p tcp -m multiport --dports 80,443 -j ACCEPT && sudo netfilter-persistent save
+   ```
+4. **Address:** at duckdns.org, sign in, create e.g. `mycompany` and set it to the server's public IP → your app will
+   be `https://mycompany.duckdns.org`.
+5. **App:**
+
+   ```bash
+   curl -fsSL https://get.docker.com | sh
+   git clone <this repository> onsite && cd onsite
+   cp .env.example .env     # DOMAIN=mycompany.duckdns.org, BOOTSTRAP_DEV_PASSWORD, CONTACT_EMAIL
+   sudo docker compose up -d
+   ```
+   Caddy gets the HTTPS certificate by itself. Open the address and sign in as `developer`.
+
+Other free choice: Google Cloud's always-free **e2-micro** (US regions only, 1 GB RAM, 1 GB outgoing traffic a month)
+works the same way with the steps 4–5 above; add swap before building (`sudo fallocate -l 2G /swapfile && sudo
+chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`). Avoid free plans that sleep or have no
+permanent disk (Render, Koyeb, Railway trial…): the app would lose its data or miss its background jobs.
+
+### Recommended paid setup: a small server + Cloudflare Tunnel
 
 Cloudflare gives the app its HTTPS address for free and the server opens no ports to the internet.
 
