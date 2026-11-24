@@ -195,6 +195,12 @@ proxy (nginx, Caddy, a PaaS). Set `TRUST_PROXY=1` when exactly one proxy sits in
 - Locked out? On the server: `docker compose exec app node dist/server/cli.js reset-password developer`
   (also `create-developer <name>` and `unlock <name>`; locally: `npm run cli -- …`).
 
+## Sales demo
+
+`demo/` holds a separate, static, clickable demo for business owners (Arabic, Hebrew, English): a 3-minute story with
+one thing to press per screen, ending in a WhatsApp "I want to start". It has its own `package.json`, shares no code or
+data with the app, and is hosted on its own (Cloudflare Pages). See `demo/README.md`.
+
 ## Development
 
 ```bash
