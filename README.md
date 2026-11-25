@@ -200,6 +200,7 @@ proxy (nginx, Caddy, a PaaS). Set `TRUST_PROXY=1` when exactly one proxy sits in
 `demo/` holds a separate, static, clickable demo for business owners (Arabic, Hebrew, English): a 3-minute story with
 one thing to press per screen, ending in a WhatsApp "I want to start". It has its own `package.json`, shares no code or
 data with the app, and is hosted on its own (Cloudflare Pages). See `demo/README.md`.
+`demo2/` is the same story with premium motion, sound and a question before the cheating scenes (`demo2/README.md`).
 
 ## Development
 

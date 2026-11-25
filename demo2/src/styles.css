@@ -1,0 +1,154 @@
+@import 'tailwindcss';
+
+/* Same colors as the OnSite app, so the real app feels familiar after the demo. */
+@theme {
+  --font-sans: 'Inter Variable', 'Noto Sans Hebrew Variable', 'Noto Sans Arabic Variable', ui-sans-serif, system-ui,
+    -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #f3f4f7;
+  --color-line: #e4e7ec;
+  --color-ink: #101828;
+  --color-ink-2: #344054;
+  --color-muted: #667085;
+  --color-faint: #98a2b3;
+  --color-brand: #0f766e;
+  --color-brand-strong: #115e59;
+  --color-brand-soft: #e6f4f2;
+  --color-night: #061a17;
+  --color-night-2: #0b2a25;
+  --color-mint: #5eead4;
+
+  --animate-pulse-ring: pulse-ring 1.8s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+  --animate-pop-in: pop-in 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
+  --animate-fade-up: fade-up 0.45s ease-out both;
+  --animate-sheet-up: sheet-up 0.35s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  --animate-slide-down: slide-down 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  --animate-tap-hint: tap-hint 1.4s ease-in-out infinite;
+  --animate-shake: shake 0.45s ease-in-out both;
+  --animate-radar: radar 1.2s ease-out infinite;
+  --animate-flash: flash 0.5s ease-out both;
+  --animate-glow: glow 3s ease-in-out infinite;
+  --animate-blink: blink 1s step-end infinite;
+  --animate-ring-wave: ring-wave 1.6s ease-out infinite;
+  --animate-highlight: highlight 1.6s ease-out both;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-draw: draw 0.55s cubic-bezier(0.65, 0, 0.35, 1) 0.15s both;
+  --animate-soft-glow: soft-glow 2.6s ease-in-out infinite;
+  --animate-scene-in: scene-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-scan: scan 1.3s ease-in-out infinite;
+
+  @keyframes pulse-ring {
+    0% { transform: scale(0.9); opacity: 0.6; }
+    100% { transform: scale(1.55); opacity: 0; }
+  }
+  @keyframes pop-in {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes fade-up {
+    0% { transform: translateY(10px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes sheet-up {
+    0% { transform: translateY(100%); }
+    100% { transform: translateY(0); }
+  }
+  @keyframes slide-down {
+    0% { transform: translateY(-120%); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes tap-hint {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-4px, -8px) scale(0.92); }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-8px); }
+    40%, 80% { transform: translateX(8px); }
+  }
+  @keyframes radar {
+    0% { transform: scale(0.2); opacity: 0.8; }
+    100% { transform: scale(1.6); opacity: 0; }
+  }
+  @keyframes flash {
+    0% { opacity: 0.95; }
+    100% { opacity: 0; }
+  }
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(94 234 212 / 0.3); }
+    50% { box-shadow: 0 0 0 10px rgb(94 234 212 / 0); }
+  }
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+  @keyframes ring-wave {
+    0% { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+  @keyframes highlight {
+    0% { background-color: rgb(16 185 129 / 0.28); }
+    100% { background-color: transparent; }
+  }
+  @keyframes draw {
+    0% { stroke-dasharray: 1; stroke-dashoffset: 1; }
+    100% { stroke-dasharray: 1; stroke-dashoffset: 0; }
+  }
+  @keyframes soft-glow {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50% { opacity: 0.55; transform: scale(1.08); }
+  }
+  @keyframes scene-in {
+    0% { opacity: 0; transform: translateY(14px) scale(0.995); filter: blur(4px); }
+    100% { opacity: 1; transform: none; filter: none; }
+  }
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+/* Hebrew and Arabic look wrong with tight Latin letter spacing. */
+:lang(ar) .tracking-tight,
+:lang(he) .tracking-tight {
+  letter-spacing: 0;
+}
+
+/* Arrows point the reading direction. */
+[dir='rtl'] .flip-rtl {
+  scale: -1 1;
+}
+
+input[type='range'] {
+  accent-color: var(--color-brand);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
