@@ -93,23 +93,37 @@ const MINUTE_CHOICES = [5, 10, 15, 30];
 
 /** The money lost every month, from the visitor's own numbers. */
 type Bucket = 'less' | 'between' | 'more';
+const BUCKETS: Bucket[] = ['less', 'between', 'more'];
 
 /** Rounds a shekel amount to a number a person would say: 1,500, 4,000, 12,000… */
 const roundNice = (n: number) => (n < 10_000 ? Math.max(500, Math.round(n / 500) * 500) : Math.round(n / 1000) * 1000);
+
+/** The three ranges offered for a monthly loss, recomputed whenever the visitor's numbers change. */
+function rangesFor(money: number) {
+  const a = roundNice(money * 0.4);
+  return { a, b: Math.max(a + 500, roundNice(money * 0.8)) };
+}
+
+const bucketOf = (money: number, a: number, b: number): Bucket => (money < a ? 'less' : money <= b ? 'between' : 'more');
+
+interface Guess {
+  bucket: Bucket;
+  /** The ranges and the real amount at the moment of the guess (the visitor may change the numbers later). */
+  a: number;
+  b: number;
+  money: number;
+}
 
 export function LossScene({ calc, onChange, onNext }: { calc: Calc; onChange: (c: Calc) => void; onNext: () => void }) {
   const { d, t, lang, profile } = useDemo();
   const { hours, money } = loss(profile, calc);
   // First the visitor guesses, then the reveal: a rising tone, the digits roll with soft ticks, a deep impact,
   // a pause, then the yearly figure and whether the guess was right.
-  const [guess, setGuess] = useState<Bucket | null>(null);
+  const [guess, setGuess] = useState<Guess | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [yearly, setYearly] = useState(false);
   const shownHours = useCountUp(revealed ? hours : 0, 1100);
-  const [bounds] = useState(() => {
-    const a = roundNice(money * 0.4);
-    return { a, b: Math.max(a + 500, roundNice(money * 0.8)) };
-  });
+  const bounds = rangesFor(money);
   const revealedRef = useRef(false);
   useEffect(() => {
     if (!guess) return;
@@ -139,6 +153,12 @@ export function LossScene({ calc, onChange, onNext }: { calc: Calc; onChange: (c
     };
   }, [guess, money]);
   const fmt = (n: number) => fmtMoney(lang, n);
+  // Compare the guess with the real amount it was about.
+  const verdict = (g: Guess) => {
+    const real = bucketOf(g.money, g.a, g.b);
+    if (real === g.bucket) return `✓ ${d.common.right}`;
+    return BUCKETS.indexOf(real) > BUCKETS.indexOf(g.bucket) ? d.loss.moreThanThought : d.loss.lessThanThought;
+  };
   const options: Array<[Bucket, string]> = [
     ['less', t(d.loss.less, { a: fmt(bounds.a) })],
     ['between', t(d.loss.between, { a: fmt(bounds.a), b: fmt(bounds.b) })],
@@ -173,7 +193,7 @@ export function LossScene({ calc, onChange, onNext }: { calc: Calc; onChange: (c
                   type="button"
                   onClick={() => {
                     sound.tap();
-                    setGuess(key);
+                    setGuess({ bucket: key, a: bounds.a, b: bounds.b, money });
                   }}
                   className="h-13 cursor-pointer rounded-2xl bg-white/10 px-4 py-3 text-lg font-semibold tabular-nums ring-1 ring-white/15 transition duration-200 hover:bg-white/15 active:scale-[0.98]"
                 >
@@ -196,7 +216,7 @@ export function LossScene({ calc, onChange, onNext }: { calc: Calc; onChange: (c
             </div>
             {yearly && (
               <p className="relative mt-4 animate-fade-up text-[15px] font-semibold text-mint">
-                {guess === 'more' ? `✓ ${d.common.right}` : d.loss.moreThanThought}
+                {verdict(guess)}
               </p>
             )}
           </>

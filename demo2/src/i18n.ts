@@ -53,6 +53,7 @@ const en = {
     between: '{a} – {b}',
     more: 'More than {b}',
     moreThanThought: 'More than you thought.',
+    lessThanThought: 'Less than you thought, but still money lost.',
   },
   checkin: {
     title: 'Arrive. Tap *one button*.',
@@ -214,6 +215,7 @@ const he: Dict = {
     between: '{a} – {b}',
     more: 'יותר מ-{b}',
     moreThanThought: 'יותר ממה שחשבתם.',
+    lessThanThought: 'פחות ממה שחשבתם, אבל עדיין כסף שהולך לאיבוד.',
   },
   checkin: {
     title: 'מגיעים. לוחצים *על כפתור אחד*.',
@@ -373,6 +375,7 @@ const ar: Dict = {
     between: '{a} – {b}',
     more: 'أكثر من {b}',
     moreThanThought: 'أكثر مما توقعت.',
+    lessThanThought: 'أقل مما توقعت، لكنه ما زال مالًا ضائعًا.',
   },
   checkin: {
     title: 'يصل. يضغط *زرًا واحدًا*.',
