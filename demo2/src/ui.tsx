@@ -439,5 +439,5 @@ function Digit({ value, delay }: { value: number; delay: number }) {
 
 /** A full-page step that is not a phone scene (profile, calculator, before/after…). */
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx('mx-auto flex h-full w-full max-w-3xl flex-col overflow-y-auto px-5 pt-4 pb-6 sm:pt-8 lg:justify-center', className)}>{children}</div>;
+  return <div className={cx('mx-auto flex h-full w-full max-w-3xl flex-col overflow-y-auto px-5 pt-4 pb-6 sm:pt-8 lg:justify-center [&>*]:shrink-0', className)}>{children}</div>;
 }

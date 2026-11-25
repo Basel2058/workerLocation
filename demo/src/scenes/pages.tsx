@@ -111,7 +111,7 @@ export function LossScene({ calc, onChange, onNext }: { calc: Calc; onChange: (c
       </p>
       <div className="mt-3 grid animate-fade-up grid-cols-4 gap-2" style={{ animationDelay: '160ms' }}>
         {MINUTE_CHOICES.map((m) => (
-          <Choice key={m} selected={calc.minutes === m} onClick={() => onChange({ ...calc, minutes: m })} className="px-1">
+          <Choice key={m} selected={calc.minutes === m} onClick={() => onChange({ ...calc, minutes: m })} className="px-1 text-[15px] whitespace-nowrap sm:text-[17px]">
             {t(d.loss.minutes, { n: m })}
           </Choice>
         ))}
