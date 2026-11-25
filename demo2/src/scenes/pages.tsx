@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { loss, useDemo, type Calc, type Profile } from '../context';
 import { fmtMoney, fmtNumber, INDUSTRIES, type Industry } from '../i18n';
 import { sound } from '../sound';
-import { BigButton, cx, Logo, Odometer, Page, useCountUp } from '../ui';
+import { BigButton, cx, Headline, Logo, Odometer, Page, useCountUp } from '../ui';
 import { Backdrop } from './intro';
 
 const WORKER_CHOICES = [10, 25, 50, 100];
@@ -41,7 +41,9 @@ export function ProfileScene({ profile, onChange, onNext }: { profile: Profile; 
   const { d } = useDemo();
   return (
     <Page>
-      <h2 className="animate-fade-up text-3xl font-bold tracking-tight sm:text-4xl">{d.profile.title}</h2>
+      <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+        <Headline text={d.profile.title} />
+      </h2>
       <label className="mt-7 block animate-fade-up" style={{ animationDelay: '80ms' }}>
         <span className="text-[15px] font-semibold text-ink-2">
           {d.profile.company} <span className="font-normal text-muted">({d.profile.optional})</span>
@@ -90,47 +92,67 @@ export function ProfileScene({ profile, onChange, onNext }: { profile: Profile; 
 const MINUTE_CHOICES = [5, 10, 15, 30];
 
 /** The money lost every month, from the visitor's own numbers. */
+type Bucket = 'less' | 'between' | 'more';
+
+/** Rounds a shekel amount to a number a person would say: 1,500, 4,000, 12,000… */
+const roundNice = (n: number) => (n < 10_000 ? Math.max(500, Math.round(n / 500) * 500) : Math.round(n / 1000) * 1000);
+
 export function LossScene({ calc, onChange, onNext }: { calc: Calc; onChange: (c: Calc) => void; onNext: () => void }) {
   const { d, t, lang, profile } = useDemo();
   const { hours, money } = loss(profile, calc);
-  // The reveal: a short pause, the digits roll with soft ticks, a deep impact, then the yearly figure.
+  // First the visitor guesses, then the reveal: a rising tone, the digits roll with soft ticks, a deep impact,
+  // a pause, then the yearly figure and whether the guess was right.
+  const [guess, setGuess] = useState<Bucket | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [yearly, setYearly] = useState(false);
   const shownHours = useCountUp(revealed ? hours : 0, 1100);
-  const first = useRef(true);
+  const [bounds] = useState(() => {
+    const a = roundNice(money * 0.4);
+    return { a, b: Math.max(a + 500, roundNice(money * 0.8)) };
+  });
+  const revealedRef = useRef(false);
   useEffect(() => {
+    if (!guess) return;
     const timers: number[] = [];
-    const ticks = (ms: number) => {
-      const id = window.setInterval(sound.tick, 55);
-      timers.push(window.setTimeout(() => window.clearInterval(id), ms));
-      return id;
-    };
     let interval = 0;
-    if (first.current) {
-      first.current = false;
+    const ticks = (ms: number) => {
+      interval = window.setInterval(sound.tick, 55);
+      timers.push(window.setTimeout(() => window.clearInterval(interval), ms));
+    };
+    if (!revealedRef.current) {
+      sound.riser(0.9);
       timers.push(
         window.setTimeout(() => {
+          revealedRef.current = true;
           setRevealed(true);
-          interval = ticks(1250);
-        }, 700),
+          ticks(1250);
+        }, 900),
       );
-      timers.push(window.setTimeout(sound.impact, 2000));
-      timers.push(window.setTimeout(() => setYearly(true), 2700));
+      timers.push(window.setTimeout(sound.impact, 2200));
+      timers.push(window.setTimeout(() => setYearly(true), 2900));
     } else {
-      interval = ticks(650);
+      ticks(650);
     }
     return () => {
       timers.forEach((id) => window.clearTimeout(id));
       window.clearInterval(interval);
     };
-  }, [money]);
+  }, [guess, money]);
+  const fmt = (n: number) => fmtMoney(lang, n);
+  const options: Array<[Bucket, string]> = [
+    ['less', t(d.loss.less, { a: fmt(bounds.a) })],
+    ['between', t(d.loss.between, { a: fmt(bounds.a), b: fmt(bounds.b) })],
+    ['more', t(d.loss.more, { b: fmt(bounds.b) })],
+  ];
   return (
     <Page>
-      <h2 className="animate-fade-up text-3xl font-bold tracking-tight text-balance sm:text-4xl">{d.loss.title}</h2>
-      <p className="mt-4 animate-fade-up text-lg text-ink-2" style={{ animationDelay: '80ms' }}>
+      <h2 className="text-3xl font-bold tracking-tight text-balance sm:text-4xl">
+        <Headline text={d.loss.title} />
+      </h2>
+      <p className="mt-4 animate-fade-up text-lg text-ink-2" style={{ animationDelay: '500ms' }}>
         {d.loss.intro}
       </p>
-      <div className="mt-3 grid animate-fade-up grid-cols-4 gap-2" style={{ animationDelay: '160ms' }}>
+      <div className="mt-3 grid animate-fade-up grid-cols-4 gap-2" style={{ animationDelay: '600ms' }}>
         {MINUTE_CHOICES.map((m) => (
           <Choice key={m} selected={calc.minutes === m} onClick={() => onChange({ ...calc, minutes: m })} className="px-1">
             {t(d.loss.minutes, { n: m })}
@@ -139,21 +161,49 @@ export function LossScene({ calc, onChange, onNext }: { calc: Calc; onChange: (c
       </div>
       <p className="mt-1.5 text-center text-sm text-muted">{d.loss.perDay}</p>
 
-      <div className="relative mt-5 animate-fade-up overflow-hidden rounded-3xl bg-night p-6 text-center text-white shadow-xl sm:p-8" style={{ animationDelay: '240ms' }}>
-        <div aria-hidden className="absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-rose-500/25 blur-3xl" />
-        <p className="relative flex justify-center text-5xl font-bold tracking-tight text-rose-300 tabular-nums sm:text-7xl">
-          <Odometer text={fmtMoney(lang, revealed ? money : 0)} />
-        </p>
-        <p className="relative mt-2 text-lg text-white/85 sm:text-xl">{d.loss.paid}</p>
-        <div className="relative mt-4 flex flex-wrap justify-center gap-2 text-[15px]">
-          <span className="rounded-full bg-white/10 px-3 py-1 tabular-nums">{t(d.loss.hours, { hours: fmtNumber(lang, shownHours) })}</span>
-          <span className={cx('rounded-full bg-rose-500/20 px-3 py-1 font-semibold text-rose-200 tabular-nums transition duration-700', yearly ? 'opacity-100' : 'translate-y-1 opacity-0')}>
-            {t(d.loss.perYear, { money: fmtMoney(lang, money * 12) })}
-          </span>
-        </div>
+      <div className="relative mt-5 animate-fade-up overflow-hidden rounded-3xl bg-night p-6 text-center text-white shadow-xl sm:p-8" style={{ animationDelay: '700ms' }}>
+        <div aria-hidden className={cx('absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full blur-3xl transition-colors duration-700', guess ? 'bg-rose-500/25' : 'bg-teal-400/20')} />
+        {!guess ? (
+          <div className="relative">
+            <p className="text-xl font-bold sm:text-2xl">{d.loss.guess}</p>
+            <div className="mt-5 grid gap-2.5">
+              {options.map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    sound.tap();
+                    setGuess(key);
+                  }}
+                  className="h-13 cursor-pointer rounded-2xl bg-white/10 px-4 py-3 text-lg font-semibold tabular-nums ring-1 ring-white/15 transition duration-200 hover:bg-white/15 active:scale-[0.98]"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="relative flex justify-center text-5xl font-bold tracking-tight text-rose-300 tabular-nums sm:text-7xl">
+              <Odometer text={fmtMoney(lang, revealed ? money : 0)} />
+            </p>
+            <p className="relative mt-2 text-lg text-white/85 sm:text-xl">{d.loss.paid}</p>
+            <div className="relative mt-4 flex flex-wrap justify-center gap-2 text-[15px]">
+              <span className="rounded-full bg-white/10 px-3 py-1 tabular-nums">{t(d.loss.hours, { hours: fmtNumber(lang, shownHours) })}</span>
+              <span className={cx('rounded-full bg-rose-500/20 px-3 py-1 font-semibold text-rose-200 tabular-nums transition duration-700', yearly ? 'opacity-100' : 'translate-y-1 opacity-0')}>
+                {t(d.loss.perYear, { money: fmtMoney(lang, money * 12) })}
+              </span>
+            </div>
+            {yearly && (
+              <p className="relative mt-4 animate-fade-up text-[15px] font-semibold text-mint">
+                {guess === 'more' ? `✓ ${d.common.right}` : d.loss.moreThanThought}
+              </p>
+            )}
+          </>
+        )}
       </div>
 
-      <label className="mt-5 block animate-fade-up" style={{ animationDelay: '320ms' }}>
+      <label className="mt-5 block animate-fade-up" style={{ animationDelay: '800ms' }}>
         <span className="flex items-center justify-between text-[15px] font-semibold text-ink-2">
           {d.loss.wage}
           <span className="text-lg text-ink tabular-nums">{fmtMoney(lang, calc.wage)}</span>
@@ -169,10 +219,12 @@ export function LossScene({ calc, onChange, onNext }: { calc: Calc; onChange: (c
         />
       </label>
       <p className="mt-2 text-center text-xs text-muted">{d.loss.note}</p>
-      <div className="mt-auto flex justify-center pt-6 lg:mt-8">
-        <BigButton next onClick={onNext} className="w-full max-w-sm">
-          {d.loss.cta}
-        </BigButton>
+      <div className="mt-auto flex h-14 justify-center pt-6 lg:mt-8 lg:pt-0">
+        {yearly && (
+          <BigButton next wait={1600} onClick={onNext} className="w-full max-w-sm animate-fade-up">
+            {d.loss.cta}
+          </BigButton>
+        )}
       </div>
     </Page>
   );
@@ -182,7 +234,9 @@ export function CompareScene({ onNext }: { onNext: () => void }) {
   const { d } = useDemo();
   return (
     <Page>
-      <h2 className="animate-fade-up text-center text-3xl font-bold tracking-tight sm:text-4xl">{d.compare.title}</h2>
+      <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
+        <Headline text={d.compare.title} />
+      </h2>
       <div className="mt-6 grid grid-cols-2 gap-3">
         <p className="rounded-2xl bg-surface-2 py-3 text-center text-[15px] font-bold text-muted sm:text-lg">{d.compare.before}</p>
         <p className="rounded-2xl bg-brand py-3 text-center text-[15px] font-bold text-white sm:text-lg">{d.compare.after}</p>
@@ -200,7 +254,7 @@ export function CompareScene({ onNext }: { onNext: () => void }) {
         ))}
       </div>
       <div className="mt-auto flex justify-center pt-8 lg:mt-10">
-        <BigButton next onClick={onNext} className="w-full max-w-sm animate-fade-up">
+        <BigButton next wait={2000} onClick={onNext} className="w-full max-w-sm animate-fade-up">
           {d.common.next}
         </BigButton>
       </div>
@@ -214,7 +268,9 @@ export function WorriesScene({ onNext }: { onNext: () => void }) {
   const { d } = useDemo();
   return (
     <Page>
-      <h2 className="animate-fade-up text-center text-3xl font-bold tracking-tight sm:text-4xl">{d.worries.title}</h2>
+      <h2 className="text-center text-3xl font-bold tracking-tight sm:text-4xl">
+        <Headline text={d.worries.title} />
+      </h2>
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {d.worries.items.map(([title, body], i) => {
           const Icon = WORRY_ICONS[i]!;
@@ -232,7 +288,7 @@ export function WorriesScene({ onNext }: { onNext: () => void }) {
         })}
       </div>
       <div className="mt-auto flex justify-center pt-8 lg:mt-10">
-        <BigButton next onClick={onNext} className="w-full max-w-sm">
+        <BigButton next wait={1800} onClick={onNext} className="w-full max-w-sm">
           {d.common.next}
         </BigButton>
       </div>
@@ -275,7 +331,9 @@ export function CtaScene({ onRestart }: { onRestart: () => void }) {
         <div className="animate-float">
           <Logo size={84} />
         </div>
-        <h1 className="mt-6 animate-fade-up text-4xl leading-tight font-bold tracking-tight text-balance sm:text-5xl">{t(d.cta.title, { company })}</h1>
+        <h1 className="mt-6 text-4xl leading-tight font-bold tracking-tight text-balance sm:text-5xl">
+          <Headline text={t(d.cta.title, { company })} delay={200} />
+        </h1>
         <p className="mt-4 animate-fade-up text-lg text-white/75 sm:text-xl" style={{ animationDelay: '120ms' }}>
           {d.cta.body}
         </p>

@@ -11,6 +11,12 @@ The same story as `../demo`, made more engaging while staying serious and busine
 - **Premium sound design** (Web Audio, no files): soft clicks, bell tones with a light reverb, an OnSite signature
   (three rising notes) when the demo starts and ends, a note as each worker arrives on the opening map.
 - **Check and cross marks that draw themselves** in a softly glowing circle.
+- **Made for people who tap without reading:**
+  - Titles are 3–6 words with the key words in color (`*key words*` in `src/i18n.ts`), and they appear word by word,
+    so the eye follows them; the result itself is big on the phone.
+  - Next buttons fill up for about 2 seconds before they can be pressed (time to see the result), like a story loading.
+  - Before the lost-money figure the visitor guesses it (three ranges around the real amount), so they think about
+    the number before they see it.
 
 
 Originally: a 3-minute guided, clickable story for business owners, in Arabic, Hebrew and English. On every screen there is

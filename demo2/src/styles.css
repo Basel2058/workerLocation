@@ -38,6 +38,8 @@
   --animate-soft-glow: soft-glow 2.6s ease-in-out infinite;
   --animate-scene-in: scene-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-scan: scan 1.3s ease-in-out infinite;
+  --animate-word: word 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-fill: fill linear both;
 
   @keyframes pulse-ring {
     0% { transform: scale(0.9); opacity: 0.6; }
@@ -102,6 +104,14 @@
   @keyframes scene-in {
     0% { opacity: 0; transform: translateY(14px) scale(0.995); filter: blur(4px); }
     100% { opacity: 1; transform: none; filter: none; }
+  }
+  @keyframes word {
+    0% { opacity: 0; transform: translateY(0.35em); filter: blur(6px); }
+    100% { opacity: 1; transform: none; filter: none; }
+  }
+  @keyframes fill {
+    0% { width: 0%; }
+    100% { width: 100%; }
   }
   @keyframes scan {
     0% { transform: translateY(-100%); }

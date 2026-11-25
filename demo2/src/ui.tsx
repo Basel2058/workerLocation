@@ -189,6 +189,7 @@ export function BigButton({
   className,
   icon = true,
   next,
+  wait = 0,
 }: {
   children: ReactNode;
   onClick: () => void;
@@ -196,28 +197,77 @@ export function BigButton({
   className?: string;
   icon?: boolean;
   next?: boolean;
+  /** Milliseconds before it can be pressed; meanwhile a light bar fills the button, like a story loading. */
+  wait?: number;
 }) {
+  const [ready, setReady] = useState(wait === 0);
+  useEffect(() => {
+    if (wait === 0) return;
+    const id = window.setTimeout(() => setReady(true), wait);
+    return () => window.clearTimeout(id);
+  }, [wait]);
   return (
     <button
       type="button"
       data-next={next ? '' : undefined}
+      disabled={!ready}
       onClick={() => {
         sound.tap();
         onClick();
       }}
       className={cx(
-        'group inline-flex h-14 cursor-pointer items-center justify-center gap-2 rounded-2xl px-7 text-[17px] font-semibold transition duration-200 active:scale-[0.97]',
-        tone === 'brand' && 'animate-glow bg-brand text-white shadow-lg shadow-brand/25 hover:bg-brand-strong',
+        'group relative inline-flex h-14 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-2xl px-7 text-[17px] font-semibold transition duration-200 active:scale-[0.97] disabled:cursor-default',
+        tone === 'brand' && 'bg-brand text-white shadow-lg shadow-brand/25 hover:bg-brand-strong',
+        tone === 'brand' && ready && 'animate-glow',
+        tone === 'brand' && !ready && 'bg-brand/45 shadow-none',
         tone === 'light' && 'bg-white text-night hover:bg-white/90',
         tone === 'ghost' && 'bg-white/10 text-white ring-1 ring-white/20 hover:bg-white/15',
         className,
       )}
     >
-      {children}
-      {icon && <ArrowRight className="flip-rtl size-5 transition-transform duration-200 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5" />}
+      {!ready && (
+        <span aria-hidden className="absolute inset-y-0 start-0 animate-fill bg-brand" style={{ animationDuration: `${wait}ms` }} />
+      )}
+      <span className="relative inline-flex items-center gap-2">
+        {children}
+        {icon && <ArrowRight className="flip-rtl size-5 transition-transform duration-200 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5" />}
+      </span>
     </button>
   );
 }
+
+/**
+ * A headline that appears word by word, so the eye follows it without deciding to read. Text between
+ * asterisks is the key words, in the brand color: "Checking in *from home*?".
+ */
+export function Headline({ text, className, delay = 0, step = 90 }: { text: string; className?: string; delay?: number; step?: number }) {
+  let i = 0;
+  const parts = text.split(/(\*[^*]+\*)/g).filter(Boolean);
+  return (
+    <span className={className}>
+      {parts.map((part, p) => {
+        const key = part.startsWith('*') && part.endsWith('*');
+        const words = (key ? part.slice(1, -1) : part).split(/(\s+)/);
+        return (
+          <span key={p} className={key ? 'text-brand' : undefined}>
+            {words.map((w, k) =>
+              /^\s+$/.test(w) || w === '' ? (
+                w
+              ) : (
+                <span key={k} className="inline-block animate-word" style={{ animationDelay: `${delay + i++ * step}ms` }}>
+                  {w}
+                </span>
+              ),
+            )}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+/** How long the Next button of a scene fills before it can be pressed: time to see the result. */
+const NEXT_WAIT = 2200;
 
 /** A question asked before an action, so the visitor thinks like a manager: "Will he manage to…?" */
 export interface Ask {
@@ -276,8 +326,8 @@ export function Scene({
               {ask.guess === ask.answer ? '✓' : '↺'} {ask.guess === ask.answer ? d.common.right : d.common.wrong}
             </p>
           )}
-          <h2 className="mt-2 text-[22px] leading-tight font-bold tracking-tight text-balance sm:text-3xl lg:mt-4 lg:text-[40px]">
-            {done ? doneTitle : asking ? ask.question : title}
+          <h2 className="mt-2 text-[24px] leading-tight font-bold tracking-tight text-balance sm:text-3xl lg:mt-4 lg:text-[44px]">
+            <Headline text={done ? doneTitle : asking ? ask.question : title} delay={done ? 250 : 0} />
           </h2>
           {asking ? (
             <div className="mt-4 grid max-w-sm grid-cols-2 gap-3">
@@ -296,7 +346,10 @@ export function Scene({
               ))}
             </div>
           ) : (
-            <p className={cx('mt-1.5 text-[15px] text-pretty sm:text-lg lg:mt-3 lg:text-xl', done ? 'text-ink-2' : 'font-semibold text-brand')}>
+            <p
+              className={cx('mt-1.5 animate-fade-up text-[15px] text-pretty sm:text-lg lg:mt-3 lg:text-xl', done ? 'text-muted' : 'font-semibold text-brand')}
+              style={{ animationDelay: done ? '700ms' : '300ms' }}
+            >
               {done ? doneBody : `👆 ${hint}`}
             </p>
           )}
@@ -304,7 +357,7 @@ export function Scene({
         </div>
         <div className="mt-6 hidden lg:block">
           {done && (
-            <BigButton onClick={onNext} next className="animate-fade-up" >
+            <BigButton onClick={onNext} next wait={NEXT_WAIT} className="animate-fade-up">
               {d.common.next}
             </BigButton>
           )}
@@ -313,7 +366,7 @@ export function Scene({
       <div className={cx('flex min-h-0 flex-1 gap-3 self-stretch transition duration-500 lg:py-4', asking && 'scale-[0.97] opacity-50 blur-[1px]')}>{children}</div>
       <div className="flex h-14 shrink-0 justify-center lg:hidden">
         {done && (
-          <BigButton onClick={onNext} next className="w-full max-w-sm animate-fade-up">
+          <BigButton onClick={onNext} next wait={NEXT_WAIT} className="w-full max-w-sm animate-fade-up">
             {d.common.next}
           </BigButton>
         )}
